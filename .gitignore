@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Environment / secret files
+.env
+.env.*
+!.env.example
+
+# Next.js
+.next/
+out/
+
+# Expo / React Native
+.expo/
+expo-env.d.ts
+
+# Build files
+dist/
+build/
+
+# Cache
+.cache/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+
+# User uploaded private files
+backend/uploads/payment/
+backend/uploads/payment-user/
+backend/uploads/profile/
+
+# Local Claude settings
+mobile/.claude/
