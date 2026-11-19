@@ -43,6 +43,36 @@ function getToken(): string | null {
   return null;
 }
 
+function getCurrentUser(): { id: number | null; email: string | null } {
+  if (typeof window === "undefined") return { id: null, email: null };
+  try {
+    const rawUser = localStorage.getItem("user") || sessionStorage.getItem("user");
+    if (rawUser) {
+      const parsed = JSON.parse(rawUser);
+      if (parsed) {
+        return {
+          id: parsed.id ? Number(parsed.id) : null,
+          email: parsed.email ? String(parsed.email).toLowerCase() : null,
+        };
+      }
+    }
+  } catch {}
+
+  try {
+    const token = getToken();
+    if (token && token.includes(".")) {
+      const payloadBase64 = token.split(".")[1];
+      const decoded = JSON.parse(atob(payloadBase64));
+      return {
+        id: decoded?.id ? Number(decoded.id) : null,
+        email: decoded?.email ? String(decoded.email).toLowerCase() : null,
+      };
+    }
+  } catch {}
+
+  return { id: null, email: null };
+}
+
 // Fungsi dasar untuk semua endpoint. Header Bearer diambil dari token login.
 async function request<T = unknown>(url: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
@@ -329,6 +359,25 @@ export default function SettingsPage() {
   const [accBusy, setAccBusy] = useState(false);
   const [tab, setTab] = useState<"admin" | "user">("admin");
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: number | null; email: string | null }>({ id: null, email: null });
+
+  useEffect(() => {
+    setCurrentUser(getCurrentUser());
+    async function fetchSelf() {
+      try {
+        const res = await request<{ id?: number; email?: string }>("/api/profil");
+        if (res) {
+          setCurrentUser((prev) => ({
+            id: res.id ? Number(res.id) : prev.id,
+            email: res.email ? String(res.email).toLowerCase() : prev.email,
+          }));
+        }
+      } catch {
+        // fallback dari token / localStorage
+      }
+    }
+    fetchSelf();
+  }, []);
 
   const [toast, setToast] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -419,6 +468,11 @@ export default function SettingsPage() {
 
   // Satu jalur untuk dua arah: User → Admin dan Admin → User. Tersimpan di database.
   async function changeRole(id: number, role: "Admin" | "User") {
+    if (role === "User" && (id === currentUser.id || target?.email?.toLowerCase() === currentUser.email?.toLowerCase())) {
+      showToast("Anda tidak bisa menurunkan akun Anda sendiri.");
+      setDialog(null);
+      return;
+    }
     const name = target?.name;
     setAccBusy(true);
     try {
@@ -435,6 +489,11 @@ export default function SettingsPage() {
 
   // Hapus akun dan ganti password masih mengubah tampilan saja (belum tersambung ke backend).
   function remove(id: number) {
+    if (id === currentUser.id || target?.email?.toLowerCase() === currentUser.email?.toLowerCase()) {
+      showToast("Anda tidak bisa menghapus akun Anda sendiri.");
+      setDialog(null);
+      return;
+    }
     // TODO: await apiAkun(`/${id}`, { method: "DELETE" })
     setAccounts((l) => l.filter((a) => a.id !== id));
     showToast(`Akun ${target?.name} dihapus.`);
@@ -559,24 +618,46 @@ export default function SettingsPage() {
                   </thead>
                   <tbody>
                     {admins.map((a) => {
+                      const isSelf =
+                        (currentUser.id !== null && a.id === currentUser.id) ||
+                        (currentUser.email !== null && a.email.toLowerCase() === currentUser.email.toLowerCase());
                       const locked = a.role === "Super Admin";
                       return (
-                        <tr key={a.id}>
-                          <td><div className="who"><Avatar name={a.name} /><span className="name">{a.name}</span></div></td>
+                        <tr key={a.id} className={isSelf ? "row-self" : ""}>
+                          <td>
+                            <div className="who">
+                              <Avatar name={a.name} />
+                              <span className="name">{a.name}</span>
+                              {isSelf && <span className="you-badge" title="Akun Anda yang sedang aktif">Anda</span>}
+                            </div>
+                          </td>
                           <td className="muted">{a.email}</td>
                           <td><RolePill role={a.role} /></td>
                           <td>
                             <div className="actions">
-                              <button className="btn-sm" onClick={() => setDialog({ kind: "password", id: a.id })}><IKey /> Update Password</button>
-                              <button
-                                className="btn-sm"
-                                disabled={locked}
-                                title={locked ? "Super Admin tidak bisa diubah menjadi user" : "Ubah menjadi user biasa"}
-                                onClick={() => setDialog({ kind: "demote", id: a.id })}
-                              >
-                                <IUserMinus /> Jadikan User
+                              <button className="btn-sm" onClick={() => setDialog({ kind: "password", id: a.id })}>
+                                <IKey /> Update Password
                               </button>
-                              <button className="btn-sm danger" disabled={locked} title={locked ? "Super Admin tidak bisa dihapus" : undefined} onClick={() => setDialog({ kind: "delete", id: a.id })}><ITrash /> Hapus</button>
+                              {!isSelf && (
+                                <>
+                                  <button
+                                    className="btn-sm"
+                                    disabled={locked}
+                                    title={locked ? "Super Admin tidak bisa diubah menjadi user" : "Ubah menjadi user biasa"}
+                                    onClick={() => setDialog({ kind: "demote", id: a.id })}
+                                  >
+                                    <IUserMinus /> Jadikan User
+                                  </button>
+                                  <button
+                                    className="btn-sm danger"
+                                    disabled={locked}
+                                    title={locked ? "Super Admin tidak bisa dihapus" : undefined}
+                                    onClick={() => setDialog({ kind: "delete", id: a.id })}
+                                  >
+                                    <ITrash /> Hapus
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -783,6 +864,31 @@ tbody tr:last-child td { border-bottom: 0; }
 .role.admin { background: #F6E2C2; color: #8A5A12; }
 .role.user { background: var(--soft); color: var(--muted); }
 :root[data-theme="dark"] .role.admin { background: #3A2F1A; color: #E7BE7A; }
+
+.you-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: rgba(43, 99, 137, 0.12);
+  color: #2B6389;
+  border: 1px solid rgba(43, 99, 137, 0.25);
+  letter-spacing: 0.02em;
+}
+:root[data-theme="dark"] .you-badge {
+  background: rgba(117, 181, 226, 0.18);
+  color: #75B5E2;
+  border-color: rgba(117, 181, 226, 0.35);
+}
+
+tbody tr.row-self {
+  background: rgba(43, 99, 137, 0.03);
+}
+:root[data-theme="dark"] tbody tr.row-self {
+  background: rgba(117, 181, 226, 0.05);
+}
 
 .empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 48px 24px 56px; gap: 8px; }
 .empty-icon { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-bottom: 10px; }

@@ -80,11 +80,12 @@ const MENU = [
   },
   {
     href: "/notifikasi",
-    label: "Notifikasi",
+    label: "Pengumuman",
     icon: (
       <>
-        <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z" />
-        <path d="M10 20a2 2 0 0 0 4 0" />
+        <path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6l-5 4H4a1 1 0 0 0-1 1Z" />
+        <path d="M15 9a4 4 0 0 1 0 6" />
+        <path d="M18 6a8 8 0 0 1 0 12" />
       </>
     ),
   },

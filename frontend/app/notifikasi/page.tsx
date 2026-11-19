@@ -65,8 +65,31 @@ const fmt = (iso: string) => {
     time: d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }).replace(".", ":"),
   };
 };
+const CONCERT_TEMPLATES = [
+  {
+    label: "📢 Open Gate & Rundown",
+    title: "Informasi Open Gate & Rundown Konser",
+    message: "Halo Pengguna Encoré! Pintu masuk venue resmi dibuka pukul 15.00 WIB. Pertunjukan pembuka dimulai pukul 18.30 WIB. Pastikan e-ticket kamu sudah siap di aplikasi ya!",
+  },
+  {
+    label: "⚠️ Aturan & Larangan Venue",
+    title: "Panduan Keamanan & Aturan Venue",
+    message: "Demi keselamatan dan kenyamanan bersama, dilarang membawa kamera profesional, senjata tajam, minuman botol kaca, serta payung berujung runcing ke dalam area konser.",
+  },
+  {
+    label: "⏰ Perubahan Rundown",
+    title: "Pemberitahuan Penyesuaian Jadwal Tampil",
+    message: "Mohon perhatian seluruh pengguna, terdapat sedikit penyesuaian jadwal tampil artis utama menjadi pukul 20.00 WIB dikarenakan persiapan teknis panggung. Terima kasih atas pengertiannya.",
+  },
+  {
+    label: "🎟️ Info Penukaran Tiket",
+    title: "Jadwal & Lokasi Penukaran Gelang Tiket",
+    message: "Penukaran e-ticket menjadi wristband fisik dilayani di Ticket Box Booth Barat mulai pukul 10.00 - 18.00 WIB. Harap siapkan barcode e-ticket dan kartu identitas fisik.",
+  },
+];
+
 const targetLabel = (n: Notification) =>
-  n.mode === "all" ? "Semua User" : n.recipients === 1 ? n.recipientNames[0] ?? "1 User" : `${nf.format(n.recipients)} User terpilih`;
+  n.mode === "all" ? "Semua Pengguna" : n.recipients === 1 ? n.recipientNames[0] ?? "1 Pengguna" : `${nf.format(n.recipients)} Pengguna terpilih`;
 
 function useModal(onClose: () => void) {
   useEffect(() => {
@@ -164,17 +187,17 @@ function ConfirmSend({
       <div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="cs-title">
         <div className="modal-body confirm">
           <span className="info-icon"><ISend /></span>
-          <h2 id="cs-title">Kirim notifikasi sekarang?</h2>
+          <h2 id="cs-title">Kirim pengumuman sekarang?</h2>
           <p className="sub">
-            “{title}” akan dikirim ke{" "}
+            “{title}” akan disiarkan ke{" "}
             <strong>{mode === "all" ? `semua pengguna (${nf.format(recipients)})` : `${nf.format(recipients)} pengguna terpilih`}</strong>{" "}
-            melalui <strong>{channel}</strong>. Pengiriman tidak dapat dibatalkan.
+            melalui <strong>{channel}</strong>. Pengumuman tidak dapat dibatalkan setelah dikirim.
           </p>
         </div>
         <footer className="modal-foot">
           <button className="btn-ghost" onClick={onCancel} disabled={sending}>Batal</button>
           <button className="btn-primary" onClick={onConfirm} disabled={sending} autoFocus>
-            {sending ? "Mengirim..." : "Ya, Kirim"}
+            {sending ? "Menyiarkan..." : "Ya, Kirim Pengumuman"}
           </button>
         </footer>
       </div>
@@ -259,9 +282,9 @@ export default function NotificationPage() {
   /* validasi → buka konfirmasi */
   function requestSend() {
     const errs: Errors = {};
-    if (mode === "selected" && pickedUsers.length === 0) errs.users = "Pilih minimal 1 user penerima.";
-    if (title.trim().length < 3) errs.title = "Judul minimal 3 karakter.";
-    if (message.trim().length < 5) errs.message = "Isi pesan minimal 5 karakter.";
+    if (mode === "selected" && pickedUsers.length === 0) errs.users = "Pilih minimal 1 pengguna penerima.";
+    if (title.trim().length < 3) errs.title = "Judul pengumuman minimal 3 karakter.";
+    if (message.trim().length < 5) errs.message = "Isi pengumuman minimal 5 karakter.";
     setErrors(errs);
     if (Object.keys(errs).length === 0) setConfirming(true);
   }
@@ -282,7 +305,7 @@ export default function NotificationPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Gagal mengirim");
+      if (!res.ok) throw new Error(data.message || "Gagal mengirim pengumuman");
 
       await loadAll(); // ambil riwayat terbaru dari database
       setTitle("");
@@ -293,10 +316,10 @@ export default function NotificationPage() {
       setHistFilter("Semua");
       setPage(1);
       setConfirming(false);
-      showToast(`Notifikasi terkirim ke ${nf.format(data.recipients)} pengguna.`);
+      showToast(`Pengumuman berhasil disiarkan ke ${nf.format(data.recipients)} pengguna.`);
     } catch (err) {
       setConfirming(false);
-      showToast(err instanceof Error ? err.message : "Gagal mengirim notifikasi.");
+      showToast(err instanceof Error ? err.message : "Gagal menyiarkan pengumuman.");
     } finally {
       setSending(false);
     }
@@ -318,13 +341,10 @@ export default function NotificationPage() {
     };
   }, [history, now]);
 
-  /* riwayat: filter + paginasi */
+  /* riwayat: paginasi */
   const filtered = useMemo(
-    () =>
-      history
-        .filter((h) => histFilter === "Semua" || h.status === histFilter)
-        .sort((a, b) => b.sentAt.localeCompare(a.sentAt)),
-    [history, histFilter],
+    () => [...history].sort((a, b) => b.sentAt.localeCompare(a.sentAt)),
+    [history],
   );
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -440,47 +460,69 @@ ${bodyRows}
         <header className="head">
           <div>
             <nav className="crumb" aria-label="Breadcrumb">
-              <span>Dashboard</span><span aria-hidden="true">/</span><strong>Notifikasi</strong>
+              <span>Dashboard</span><span aria-hidden="true">/</span><strong>Pengumuman</strong>
             </nav>
-            <h1>Notifikasi &amp; Broadcast</h1>
-            <p className="sub">Kirimkan pembaruan, promosi, atau peringatan sistem langsung kepada audiens Anda melalui berbagai saluran notifikasi.</p>
+            <h1>Pengumuman Konser</h1>
+            <p className="sub">Siarkan info penting, jadwal open gate, rundown artis, aturan venue, atau pengumuman darurat langsung ke pengguna.</p>
           </div>
         </header>
 
         <div className="layout">
           {/* ───── Form kirim ───── */}
-          <section className="card form" aria-label="Form kirim broadcast">
-            <h2 className="form-title"><ISend /> Form Kirim Broadcast</h2>
+          <section className="card form" aria-label="Form kirim pengumuman">
+            <h2 className="form-title"><ISend /> Buat Pengumuman Baru</h2>
+
+            {/* Template cepat konser */}
+            <div className="template-box">
+              <span className="label">Template Pengumuman Cepat:</span>
+              <div className="template-pills">
+                {CONCERT_TEMPLATES.map((tmpl) => (
+                  <button
+                    key={tmpl.label}
+                    type="button"
+                    className="tmpl-btn"
+                    onClick={() => {
+                      setTitle(tmpl.title);
+                      setMessage(tmpl.message);
+                      setErrors({});
+                    }}
+                    title="Klik untuk memasang teks template ini"
+                  >
+                    {tmpl.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Target */}
             <div className="field">
-              <span className="label" id="target-label">Target Audiens</span>
+              <span className="label" id="target-label">Target Pengguna</span>
               <div className="segment" role="radiogroup" aria-labelledby="target-label">
                 <button type="button" role="radio" aria-checked={mode === "all"} className={`seg ${mode === "all" ? "on" : ""}`} onClick={() => (setMode("all"), setErrors((e) => ({ ...e, users: undefined })))}>
-                  <IGlobe /> Semua User
+                  <IGlobe /> Semua Pengguna
                 </button>
                 <button type="button" role="radio" aria-checked={mode === "selected"} className={`seg ${mode === "selected" ? "on" : ""}`} onClick={() => setMode("selected")}>
-                  <IUsers /> Pilih User
+                  <IUsers /> Pilih Pengguna
                 </button>
               </div>
 
               {mode === "all" ? (
-                <p className="note">Notifikasi akan dikirim ke seluruh <strong>{nf.format(users.length)}</strong> pengguna terdaftar.</p>
+                <p className="note">Pengumuman akan disiarkan ke seluruh <strong>{nf.format(users.length)}</strong> pengguna terdaftar.</p>
               ) : (
                 <div className="picker">
                   <label className="search">
                     <ISearch />
                     <input
                       type="search"
-                      placeholder="Cari nama atau email user..."
+                      placeholder="Cari nama atau email pengguna..."
                       value={userQuery}
                       onChange={(e) => setUserQuery(e.target.value)}
-                      aria-label="Cari user"
+                      aria-label="Cari pengguna"
                     />
                   </label>
 
                   {pickedUsers.length > 0 && (
-                    <div className="chips" aria-label="User terpilih">
+                    <div className="chips" aria-label="Pengguna terpilih">
                       {pickedUsers.map((u) => (
                         <span key={u.id} className="chip">
                           {u.name}
@@ -506,7 +548,7 @@ ${bodyRows}
                     </span>
                   </div>
 
-                  <ul className="user-list" role="listbox" aria-multiselectable="true" aria-label="Hasil pencarian user">
+                  <ul className="user-list" role="listbox" aria-multiselectable="true" aria-label="Hasil pencarian pengguna">
                     {results.map((u) => {
                       const on = picked.has(u.id);
                       return (
@@ -524,7 +566,7 @@ ${bodyRows}
                     })}
                     {results.length === 0 && (
                       <li className="no-result">
-                        {userQuery.trim() ? `Tidak ada user yang cocok dengan “${userQuery.trim()}”.` : "Belum ada user."}
+                        {userQuery.trim() ? `Tidak ada pengguna yang cocok dengan “${userQuery.trim()}”.` : "Belum ada pengguna terdaftar."}
                       </li>
                     )}
                   </ul>
@@ -536,7 +578,7 @@ ${bodyRows}
             {/* Judul & isi */}
             <div className="field">
               <div className="label-row">
-                <label className="label" htmlFor="n-title">Judul Notifikasi</label>
+                <label className="label" htmlFor="n-title">Judul Pengumuman</label>
                 <span className="hint">{title.length}/{TITLE_MAX}</span>
               </div>
               <input
@@ -545,7 +587,7 @@ ${bodyRows}
                 value={title}
                 maxLength={TITLE_MAX}
                 onChange={(e) => (setTitle(e.target.value), setErrors((er) => ({ ...er, title: undefined })))}
-                placeholder="Masukkan judul yang menarik..."
+                placeholder="Contoh: Informasi Open Gate & Rundown Konser..."
                 aria-invalid={!!errors.title}
               />
               {errors.title && <p className="err">{errors.title}</p>}
@@ -553,7 +595,7 @@ ${bodyRows}
 
             <div className="field">
               <div className="label-row">
-                <label className="label" htmlFor="n-msg">Isi Pesan</label>
+                <label className="label" htmlFor="n-msg">Isi Pengumuman</label>
                 <span className="hint">{message.length}/{MESSAGE_MAX}</span>
               </div>
               <textarea
@@ -562,50 +604,36 @@ ${bodyRows}
                 value={message}
                 maxLength={MESSAGE_MAX}
                 onChange={(e) => (setMessage(e.target.value), setErrors((er) => ({ ...er, message: undefined })))}
-                placeholder="Tuliskan detail pesan Anda di sini..."
+                placeholder="Tuliskan detail pengumuman (jadwal artis, aturan barang bawaan, gate venue, dsb)..."
                 aria-invalid={!!errors.message}
               />
               {errors.message && <p className="err">{errors.message}</p>}
             </div>
 
             <button className="btn-primary send" onClick={requestSend}>
-              Kirim Sekarang <ISend />
+              Kirim Pengumuman <ISend />
             </button>
             <p className="hint center">
-              Dikirim ke {nf.format(recipients)} pengguna via {channel}
+              Disiarkan ke {nf.format(recipients)} pengguna via {channel}
             </p>
           </section>
 
           {/* ───── Statistik + riwayat ───── */}
           <div className="right-col">
             <section className="stats" aria-label="Ringkasan">
-              <StatCard label="Terkirim (30 Hari)" value={nf.format(stats.delivered)} hint="Total penerima" />
-              <StatCard label="Total Broadcast" value={nf.format(stats.total)} hint="Seluruh riwayat" />
+              <StatCard label="Tersiar (30 Hari)" value={nf.format(stats.delivered)} hint="Total pengguna penerima" />
+              <StatCard label="Total Pengumuman" value={nf.format(stats.total)} hint="Seluruh riwayat siaran" />
               <StatCard
-                label="Gagal Terkirim"
-                value={nf.format(stats.failed)}
-                tone={stats.failed ? "bad" : undefined}
-                hint={
-                  stats.failed ? (
-                    <button className="inline-link" onClick={() => (setHistFilter("Gagal"), setPage(1))}>
-                      <IAlert /> Cek log kegagalan
-                    </button>
-                  ) : (
-                    "Tidak ada kegagalan"
-                  )
-                }
+                label="Total Pengguna"
+                value={nf.format(users.length)}
+                hint="Audiens terdaftar"
               />
             </section>
 
             <section className="card list">
               <div className="list-head">
-                <h2>Riwayat Notifikasi</h2>
+                <h2>Riwayat Pengumuman</h2>
                 <div className="list-tools">
-                  <select value={histFilter} onChange={(e) => (setHistFilter(e.target.value as "Semua" | Status), setPage(1))} aria-label="Filter status">
-                    <option value="Semua">Semua status</option>
-                    <option>Terkirim</option>
-                    <option>Gagal</option>
-                  </select>
                   <button className="btn-text export" onClick={exportReport} disabled={filtered.length === 0}>
                     <IDownload /> Ekspor Laporan
                   </button>
@@ -619,8 +647,8 @@ ${bodyRows}
                       <thead>
                         <tr>
                           <th>Tanggal &amp; Waktu</th>
-                          <th>Judul</th>
-                          <th>Target</th>
+                          <th>Judul Pengumuman</th>
+                          <th>Target Pengguna</th>
                           <th>Jenis</th>
                           <th>Status</th>
                         </tr>
@@ -670,9 +698,8 @@ ${bodyRows}
               ) : (
                 <div className="empty">
                   <span className="empty-icon"><IInbox /></span>
-                  <h3>{histFilter === "Semua" ? "Belum ada riwayat" : "Tidak ada riwayat"}</h3>
-                  <p>{histFilter === "Semua" ? "Notifikasi yang kamu kirim akan tercatat di sini." : "Tidak ada notifikasi dengan status ini."}</p>
-                  {histFilter !== "Semua" && <button className="btn-ghost" onClick={() => setHistFilter("Semua")}>Tampilkan semua</button>}
+                  <h3>Belum ada pengumuman</h3>
+                  <p>Pengumuman konser yang kamu kirimkan ke pengguna akan tercatat di sini.</p>
                 </div>
               )}
             </section>
@@ -761,6 +788,27 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .form { padding: 22px; display: flex; flex-direction: column; gap: 20px; }
 .form-title { display: flex; align-items: center; gap: 10px; color: var(--ink); }
 .form-title .icon { color: var(--accent); }
+.template-box { display: flex; flex-direction: column; gap: 8px; }
+.template-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.tmpl-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.tmpl-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
 .field { display: flex; flex-direction: column; gap: 8px; }
 .label { font-size: 13px; font-weight: 600; }
 .label-row { display: flex; justify-content: space-between; align-items: baseline; }
