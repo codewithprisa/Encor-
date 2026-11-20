@@ -11,18 +11,27 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+/* ═════════════════════════════════════════════════════════════════════
+ * PALET WARNA SESUAI REFERENSI:
+ * 1. #FFF9D2 (Cream butter pastel)
+ * 2. #FFEBCC (Peach lembut)
+ * 3. #BFDDF0 (Sky blue pastel)
+ * 4. #8CC0EB (Biru cerah segar)
+ * ═════════════════════════════════════════════════════════════════════ */
 const COLORS = {
-  bg: "#F7F2FA",
-  cardBg: "#FAF6FC",
-  purpleDark: "#2B2149",
-  purpleBrand: "#322553",
-  purpleMuted: "#63567D",
-  purpleLight: "#E8DEF2",
-  purpleWave: "#EFE6F7",
+  cream: "#FFF9D2",
+  peach: "#FFEBCC",
+  skySoft: "#BFDDF0",
+  skyVivid: "#8CC0EB",
+
+  // Variasi harmoni untuk teks & kontras tinggi:
+  bg: "#FFFDEB",
+  ink: "#173754",
+  muted: "#4F6E8A",
   white: "#FFFFFF",
-  sparkleLight: "rgba(255, 255, 255, 0.9)",
-  dotActive: "#322553",
-  dotInactive: "#D4C8E2",
+  btnInk: "#102A43",
+  dotActive: "#8CC0EB",
+  dotInactive: "#BFDDF0",
 };
 
 const SERIF = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
@@ -41,8 +50,9 @@ export default function Intro() {
     <SafeAreaView style={styles.safe}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Background Decorative Shapes / Curves */}
+      {/* Background Decorative Shapes / Curves (Cream, Peach, Sky Blue) */}
       <View style={styles.bgDecor} pointerEvents="none">
+        <View style={styles.curveTopLeft} />
         <View style={styles.curveTopRight} />
         <View style={styles.curveBottomLeft} />
         <View style={styles.curveBottomRight} />
@@ -95,7 +105,7 @@ export default function Intro() {
           </Text>
         </View>
 
-        {/* ── Tombol CTA Mulai Jelajahi ── */}
+        {/* ── Tombol CTA Mulai Jelajahi (#8CC0EB) ── */}
         <Pressable
           style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
           onPress={handleStart}
@@ -103,10 +113,10 @@ export default function Intro() {
           accessibilityLabel="Mulai Jelajahi"
         >
           <Text style={styles.ctaText}>Mulai Jelajahi</Text>
-          <Ionicons name="arrow-forward" size={18} color={COLORS.white} style={styles.ctaIcon} />
+          <Ionicons name="arrow-forward" size={18} color={COLORS.btnInk} style={styles.ctaIcon} />
         </Pressable>
 
-        {/* ── Pagination Dots ── */}
+        {/* ── Pagination Dots (#8CC0EB & #BFDDF0) ── */}
         <View style={styles.dotsRow}>
           <View style={[styles.dot, styles.dotActive]} />
           <View style={styles.dot} />
@@ -136,35 +146,45 @@ const styles = StyleSheet.create({
     bottom: 0,
     overflow: "hidden",
   },
+  curveTopLeft: {
+    position: "absolute",
+    top: -40,
+    left: -60,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: COLORS.cream,
+    opacity: 0.8,
+  },
   curveTopRight: {
     position: "absolute",
     top: -60,
     right: -80,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: COLORS.purpleWave,
-    opacity: 0.7,
+    width: 270,
+    height: 270,
+    borderRadius: 135,
+    backgroundColor: COLORS.skySoft,
+    opacity: 0.65,
   },
   curveBottomLeft: {
     position: "absolute",
     bottom: -80,
     left: -70,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: COLORS.purpleWave,
-    opacity: 0.6,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: COLORS.peach,
+    opacity: 0.7,
   },
   curveBottomRight: {
     position: "absolute",
-    bottom: -40,
+    bottom: -50,
     right: -60,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: COLORS.purpleWave,
-    opacity: 0.5,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: COLORS.skySoft,
+    opacity: 0.6,
   },
 
   scroll: {
@@ -181,15 +201,14 @@ const styles = StyleSheet.create({
     top: 20,
     left: 24,
     fontSize: 20,
-    color: COLORS.purpleBrand,
-    opacity: 0.9,
+    color: COLORS.skyVivid,
   },
   sparkleHeroLeft: {
     position: "absolute",
     left: 18,
     top: "38%",
     fontSize: 18,
-    color: COLORS.sparkleLight,
+    color: COLORS.white,
     textShadowColor: "rgba(0, 0, 0, 0.4)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -199,8 +218,8 @@ const styles = StyleSheet.create({
     right: 22,
     bottom: 22,
     fontSize: 24,
-    color: COLORS.sparkleLight,
-    textShadowColor: "rgba(0, 0, 0, 0.4)",
+    color: COLORS.cream,
+    textShadowColor: "rgba(0, 0, 0, 0.45)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
@@ -209,8 +228,8 @@ const styles = StyleSheet.create({
     bottom: 24,
     left: 20,
     fontSize: 18,
-    color: COLORS.purpleMuted,
-    opacity: 0.8,
+    color: COLORS.skyVivid,
+    opacity: 0.85,
   },
 
   // Header
@@ -228,18 +247,18 @@ const styles = StyleSheet.create({
     fontSize: 42,
     fontWeight: "700",
     letterSpacing: -0.5,
-    color: COLORS.purpleDark,
+    color: COLORS.ink,
   },
   logoSparkle: {
     fontSize: 16,
-    color: COLORS.purpleDark,
+    color: COLORS.skyVivid,
     marginTop: 2,
     marginLeft: 2,
   },
   subtitle: {
     fontSize: 13.5,
-    fontWeight: "500",
-    color: COLORS.purpleMuted,
+    fontWeight: "600",
+    color: COLORS.muted,
     marginTop: 4,
     letterSpacing: 0.3,
   },
@@ -250,12 +269,14 @@ const styles = StyleSheet.create({
     height: 280,
     borderRadius: 24,
     overflow: "hidden",
-    shadowColor: COLORS.purpleDark,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 18,
-    elevation: 6,
-    backgroundColor: COLORS.purpleLight,
+    shadowColor: COLORS.ink,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 5,
+    backgroundColor: COLORS.skySoft,
+    borderWidth: 2,
+    borderColor: COLORS.peach,
     marginBottom: 20,
   },
   heroImage: {
@@ -272,35 +293,35 @@ const styles = StyleSheet.create({
     fontSize: 32,
     lineHeight: 38,
     fontWeight: "700",
-    color: COLORS.purpleDark,
+    color: COLORS.ink,
     letterSpacing: -0.3,
   },
   desc: {
     fontSize: 13.5,
     lineHeight: 21,
-    color: COLORS.purpleMuted,
+    color: COLORS.muted,
     marginTop: 10,
   },
 
-  // CTA Button
+  // CTA Button (#8CC0EB)
   cta: {
     minHeight: 52,
     borderRadius: 26,
-    backgroundColor: COLORS.purpleBrand,
+    backgroundColor: COLORS.skyVivid,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
-    shadowColor: COLORS.purpleBrand,
+    shadowColor: COLORS.skyVivid,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.38,
     shadowRadius: 10,
     elevation: 4,
   },
   ctaText: {
     fontSize: 15,
-    fontWeight: "600",
-    color: COLORS.white,
+    fontWeight: "700",
+    color: COLORS.btnInk,
     letterSpacing: 0.2,
   },
   ctaIcon: {
@@ -328,8 +349,8 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     backgroundColor: COLORS.dotActive,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 18,
+    height: 7,
+    borderRadius: 3.5,
   },
 });
