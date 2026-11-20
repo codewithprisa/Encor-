@@ -107,6 +107,11 @@ export default function Sidebar({ theme, onToggleTheme, open, onClose }) {
   const pathname = usePathname();
   const isDark = theme === "dark";
   const [counts, setCounts] = useState({ incomingOrders: 0, pendingRefunds: 0 });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -162,6 +167,7 @@ export default function Sidebar({ theme, onToggleTheme, open, onClose }) {
   }
 
   function isActive(href) {
+    if (!mounted || !pathname) return false;
     return pathname === href || pathname.startsWith(href + "/");
   }
 
@@ -193,7 +199,7 @@ export default function Sidebar({ theme, onToggleTheme, open, onClose }) {
       </div>
 
       {/* Menu utama */}
-      <nav className="sb-nav" aria-label="Menu utama">
+      <nav className="sb-nav" aria-label="Menu utama" suppressHydrationWarning>
         {MENU.map((item) => {
           const badgeCount =
             item.href === "/pesanan"
@@ -206,6 +212,7 @@ export default function Sidebar({ theme, onToggleTheme, open, onClose }) {
             <Link
               key={item.href}
               href={item.href}
+              suppressHydrationWarning
               className={`sb-item ${isActive(item.href) ? "sb-active" : ""}`}
               aria-current={isActive(item.href) ? "page" : undefined}
             >
@@ -227,6 +234,7 @@ export default function Sidebar({ theme, onToggleTheme, open, onClose }) {
       <div className="sb-bottom">
         <Link
           href={SETTINGS.href}
+          suppressHydrationWarning
           className={`sb-item ${isActive(SETTINGS.href) ? "sb-active" : ""}`}
           aria-current={isActive(SETTINGS.href) ? "page" : undefined}
         >
