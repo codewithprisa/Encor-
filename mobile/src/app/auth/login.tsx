@@ -170,6 +170,19 @@ export default function Login() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Tombol Kembali ke Intro */}
+          <View style={styles.topBar}>
+            <Pressable
+              style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
+              onPress={() => router.replace("/auth/intro")}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Kembali ke halaman intro"
+            >
+              <Ionicons name="arrow-back" size={22} color={COLORS.brand} />
+            </Pressable>
+          </View>
+
           {/* Header */}
           <View style={styles.header}>
             <Image
@@ -363,6 +376,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 28,
+  },
+
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    marginBottom: 4,
+  },
+
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.line,
   },
 
   header: {
