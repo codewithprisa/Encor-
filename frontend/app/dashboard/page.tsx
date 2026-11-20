@@ -508,7 +508,7 @@ export default function DashboardPage() {
       icon: <Icon><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6Z" /></Icon>,
     },
     {
-      label: "Total Uang",
+      label: "Total Pendapatan",
       value: rupiah(totals.revenue),
       badge: pctChange(totals.revenue, totals.prevRevenue),
       icon: <Icon><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></Icon>,
@@ -530,6 +530,21 @@ export default function DashboardPage() {
   return (
     <main className={`d-dash ${inter.className}`}>
       <style>{css}</style>
+
+      {/* Welcome Header */}
+      <header className="d-welcome">
+        <div>
+          <h1 className="d-welcome-title">Selamat Datang, Admin</h1>
+          <p className="d-welcome-date">
+            {new Date().toLocaleDateString("id-ID", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </p>
+        </div>
+      </header>
 
       {/* Statistik */}
       <section className="d-stats" aria-label="Ringkasan">
@@ -611,8 +626,11 @@ export default function DashboardPage() {
 
       {/* Event terbaru */}
       <section className="d-card">
-        <div className="d-card-head d-pad">
+        <div className="d-card-head d-pad d-card-head-event">
           <h2>List Event Terbaru</h2>
+          <a href="/event" className="d-link-all">
+            Lihat Semua Event
+          </a>
         </div>
         <div className="d-table-wrap">
           <table>
@@ -627,7 +645,14 @@ export default function DashboardPage() {
             </thead>
             <tbody>
               {events.map((e) => (
-                <tr key={e.id}>
+                <tr
+                  key={e.id}
+                  onClick={() => {
+                    window.location.href = "/event";
+                  }}
+                  className="d-row-clickable"
+                  title="Klik untuk buka di halaman Event"
+                >
                   <td className="d-strong">{e.name}</td>
                   <td>{e.artist}</td>
                   <td>{e.date}</td>
@@ -687,6 +712,15 @@ html, body { background: #FFF8F4; color: #1A1A1A; }
 .d-top { display: flex; justify-content: flex-end; align-items: center; gap: 16px; }
 .d-admin { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; padding-left: 16px; border-left: 1px solid var(--line); }
 .d-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--sand); color: var(--navy); display: grid; place-items: center; font-weight: 700; }
+
+/* welcome header */
+.d-welcome { display: flex; justify-content: space-between; align-items: flex-end; padding: 4px 2px; }
+.d-welcome-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
+.d-welcome-date { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.d-card-head-event { display: flex; justify-content: space-between; align-items: center; }
+.d-link-all { font-size: 12px; font-weight: 600; color: var(--navy); text-decoration: none; padding: 6px 12px; border-radius: 4px; background: var(--sand); transition: opacity .15s; }
+.d-link-all:hover { opacity: .85; }
+.d-row-clickable { cursor: pointer; }
 
 /* stats */
 .d-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }

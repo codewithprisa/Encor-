@@ -4,6 +4,7 @@ import {
   createEvent,
   getEventById,
   updateEvent,
+  updateEventStatus,
   deleteEvent
 } from "../controllers/eventController.js";
 import { getByEvent, create } from "../controllers/ticketTypeController.js";
@@ -22,6 +23,7 @@ router.put("/:id/denah", saveDenah);
 
 router.get("/:id", getEventById);
 router.put("/:id", updateEvent);
+router.patch("/:id/status", updateEventStatus);
 router.delete("/:id", deleteEvent);
 
 export default router;

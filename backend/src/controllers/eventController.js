@@ -581,3 +581,27 @@ export const deleteEvent = async (req, res) => {
     conn.release();
   }
 };
+
+/*
+ * PATCH /api/events/:id/status
+ * Mengubah status event secara cepat: Draft, Published, Closed
+ */
+export const updateEventStatus = async (req, res) => {
+  try {
+    const { status } = req.body || {};
+    const valid = ["draft", "published", "closed"];
+    const norm = String(status || "").toLowerCase();
+    if (!valid.includes(norm)) {
+      return res.status(400).json({ message: "Status tidak valid. Gunakan Draft, Published, atau Closed." });
+    }
+
+    const [r] = await db.query("UPDATE events SET status = ? WHERE id = ?", [norm, req.params.id]);
+    if (r.affectedRows === 0) {
+      return res.status(404).json({ message: "Event tidak ditemukan." });
+    }
+
+    res.json({ ok: true, id: Number(req.params.id), status: STATUS_UI[norm] || norm });
+  } catch (err) {
+    serverError(res, err);
+  }
+};

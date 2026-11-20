@@ -45,9 +45,10 @@ function pesanErrorRefund(err) {
 
 const SELECT_REFUND = `
   SELECT r.id, r.order_id, r.reason, r.refund_amount, r.status,
+         r.bank_name, r.account_number, r.account_name,
          r.requested_at, r.processed_at, r.admin_notes,
-         o.invoice_number, o.total_amount, o.payment_status,
-         u.id AS user_id, u.name AS pemesan, u.email,
+         o.invoice_number, o.total_amount, o.payment_status, o.payment_method,
+         u.id AS user_id, u.name AS pemesan, u.email, u.phone,
          (SELECT GROUP_CONCAT(DISTINCT e.title SEPARATOR ', ')
             FROM order_items oi
             JOIN ticket_types tt ON tt.id = oi.ticket_type_id
@@ -65,9 +66,14 @@ function mapRefund(r) {
     invoice: r.invoice_number,
     pemesan: r.pemesan,
     email: r.email,
+    telepon: r.phone || "-",
     event: r.event || "-",
     alasan: r.reason,
     jumlah: Number(r.refund_amount),
+    metodePembayaran: r.payment_method || "-",
+    bankName: r.bank_name || r.payment_method || "E-Wallet / Bank",
+    accountNumber: r.account_number || r.phone || "-",
+    accountName: r.account_name || r.pemesan || "-",
     status: STATUS_UI[r.status] || r.status,
     statusKode: r.status,
     catatanAdmin: r.admin_notes || "",
@@ -202,6 +208,55 @@ export const rejectRefund = async (req, res) => {
     const known = pesanErrorRefund(err);
     if (known) return res.status(known.status).json({ message: known.message });
     serverError(res, err);
+  }
+};
+
+/* PATCH /api/refund/:id/selesai */
+export const completeRefund = async (req, res) => {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [[r]] = await conn.query(
+      `SELECT r.id, r.order_id, r.status, r.refund_amount, o.user_id, o.invoice_number
+         FROM refunds r JOIN orders o ON o.id = r.order_id
+        WHERE r.id = ? FOR UPDATE`,
+      [req.params.id]
+    );
+    if (!r) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Data refund tidak ditemukan." });
+    }
+    if (r.status !== "approved") {
+      await conn.rollback();
+      return res.status(409).json({ message: "Refund harus berstatus disetujui sebelum ditandai selesai." });
+    }
+
+    await conn.query(
+      `UPDATE refunds
+          SET status = 'completed', updated_at = NOW()
+        WHERE id = ?`,
+      [r.id]
+    );
+
+    const nominalFmt = Number(r.refund_amount).toLocaleString("id-ID");
+    await conn.query(
+      "INSERT INTO notifications (user_id, title, message, type, reference_id) VALUES (?, ?, ?, 'refund', ?)",
+      [
+        r.user_id,
+        "Refund selesai",
+        `Dana refund pesanan ${r.invoice_number} sebesar Rp ${nominalFmt} telah berhasil ditransfer.`,
+        r.id,
+      ]
+    );
+
+    await conn.commit();
+    res.json({ ok: true, status: STATUS_UI.completed });
+  } catch (err) {
+    await conn.rollback();
+    serverError(res, err);
+  } finally {
+    conn.release();
   }
 };
 

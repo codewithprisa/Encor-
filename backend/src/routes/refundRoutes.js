@@ -5,6 +5,7 @@ import {
   getRefunds,
   approveRefund,
   rejectRefund,
+  completeRefund,
   deleteRefund,
   bulkRefund,
   createRefund,
@@ -24,6 +25,7 @@ router.post("/bulk", authMiddleware, adminMiddleware, bulkRefund);
 router.get("/", authMiddleware, adminMiddleware, getRefunds);
 router.patch("/:id/terima", authMiddleware, adminMiddleware, approveRefund);
 router.patch("/:id/tolak", authMiddleware, adminMiddleware, rejectRefund);
+router.patch("/:id/selesai", authMiddleware, adminMiddleware, completeRefund);
 router.delete("/:id", authMiddleware, adminMiddleware, deleteRefund);
 
 export default router;

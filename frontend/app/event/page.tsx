@@ -735,6 +735,22 @@ const css = `
 .badge-gray { background: #f3f4f6; color: var(--ink-2); }
 .badge-red { background: var(--red-soft); color: var(--red); }
 
+.status-select {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 22px 4px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  transition: opacity .15s;
+}
+.status-select:hover { opacity: 0.85; }
+
 .occ-text { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
 .bar { height: 6px; background: #eef0f3; border-radius: 999px; overflow: hidden; }
 .bar-fill { height: 100%; background: var(--blue); border-radius: 999px; }
@@ -750,13 +766,14 @@ const css = `
 .icon-danger:hover:not(:disabled) { background: var(--red-soft); color: var(--red); }
 
 .table-foot {
-  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  display: flex; justify-content: flex-end; align-items: center; gap: 12px; flex-wrap: wrap;
   padding: 12px 16px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-2);
 }
 .pager { display: flex; gap: 4px; }
 .pager button {
   min-width: 30px; height: 30px; padding: 0 8px; border: 1px solid var(--line);
   background: var(--card); border-radius: 6px; color: var(--ink-2);
+  display: inline-flex; align-items: center; justify-content: center;
 }
 .pager button:hover:not(:disabled) { border-color: var(--ink-3); }
 .pager-active { background: var(--blue) !important; border-color: var(--blue) !important; color: #fff !important; }
@@ -1139,12 +1156,14 @@ export default function EventPage() {
   const [denahLoading, setDenahLoading] = useState(false);
   const [denahSaving, setDenahSaving] = useState(false);
   const [denahNama, setDenahNama] = useState("Section A1");
-  const [denahBaris, setDenahBaris] = useState("4");
+  const [denahBaris, setDenahBaris] = useState("10");
   const [denahKursi, setDenahKursi] = useState("10");
   const [seats, setSeats] = useState<Record<string, SeatStatus>>({});
   const [seatJenis, setSeatJenis] = useState<Record<string, string>>({}); // "r-c" -> jenis kursi
   const [denahKategori, setDenahKategori] = useState<Kategori[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [isMouseDragging, setIsMouseDragging] = useState(false);
+  const [dragTargetState, setDragTargetState] = useState<boolean>(true);
   const [legendOpen, setLegendOpen] = useState(true);
 
   /* ====== Muat data ====== */
@@ -1533,6 +1552,71 @@ export default function EventPage() {
     }
   }
 
+  /* ====== Quick Status Update ====== */
+  async function ubahStatusEvent(id: number, statusBaru: EventStatus) {
+    try {
+      await request(`/events/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: statusBaru }),
+      });
+      setEvents((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, status: statusBaru } : e))
+      );
+      if (detail && detail.id === id) {
+        setDetail((prev) => (prev ? { ...prev, status: statusBaru } : null));
+      }
+      showToast(`Status event berhasil diubah menjadi ${statusBaru}.`);
+    } catch (e) {
+      showToast((e as Error).message);
+    }
+  }
+
+  /* ====== Ekspor Laporan CSV ====== */
+  function eksporCsv() {
+    if (hasil.length === 0) {
+      showToast("Tidak ada data event untuk diekspor.");
+      return;
+    }
+    const headers = [
+      "ID",
+      "Judul Konser",
+      "Artis",
+      "Genre",
+      "Lokasi",
+      "Tanggal",
+      "Status",
+      "Tiket Terjual",
+      "Kapasitas",
+      "Okupansi (%)",
+    ];
+    const rows = hasil.map((ev) => {
+      const persen = ev.kapasitas > 0 ? Math.round((ev.terjual / ev.kapasitas) * 100) : 0;
+      return [
+        ev.id,
+        `"${ev.judul.replace(/"/g, '""')}"`,
+        `"${ev.artis.replace(/"/g, '""')}"`,
+        `"${ev.genre.replace(/"/g, '""')}"`,
+        `"${ev.lokasi.replace(/"/g, '""')}"`,
+        `"${ev.tanggal}"`,
+        ev.status,
+        ev.terjual,
+        ev.kapasitas,
+        persen,
+      ].join(",");
+    });
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `laporan-event-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast("Laporan data event berhasil diekspor ke CSV.");
+  }
+
   /* ====== Handlers: denah kursi ====== */
   async function bukaDenah(id: number) {
     setEventDipilih(id);
@@ -1541,7 +1625,7 @@ export default function EventPage() {
     setSelected({});
     // default dulu, lalu timpa kalau backend sudah punya denah
     setDenahNama("Section A1");
-    setDenahBaris("4");
+    setDenahBaris("10");
     setDenahKursi("10");
     setSeats({});
     setSeatJenis({});
@@ -1588,6 +1672,22 @@ export default function EventPage() {
     const st = seats[k] ?? "tersedia";
     if (st !== "tersedia" && st !== "rusak") return;
     setSelected((prev) => ({ ...prev, [k]: !prev[k] }));
+  }
+
+  function handleSeatMouseDown(k: string) {
+    const st = seats[k] ?? "tersedia";
+    if (st !== "tersedia" && st !== "rusak") return;
+    const nextVal = !selected[k];
+    setIsMouseDragging(true);
+    setDragTargetState(nextVal);
+    setSelected((prev) => ({ ...prev, [k]: nextVal }));
+  }
+
+  function handleSeatMouseEnter(k: string) {
+    if (!isMouseDragging) return;
+    const st = seats[k] ?? "tersedia";
+    if (st !== "tersedia" && st !== "rusak") return;
+    setSelected((prev) => ({ ...prev, [k]: dragTargetState }));
   }
 
   function dobelKlikKursi(k: string) {
@@ -1863,9 +1963,24 @@ export default function EventPage() {
               <div>
                 <h1 className="title">Daftar Event</h1>
               </div>
-              <button type="button" className="btn-primary" onClick={bukaFormEvent}>
-                <span aria-hidden="true">+</span> Tambah Event
-              </button>
+              <div className="head-actions">
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={eksporCsv}
+                  title="Ekspor laporan event ke file CSV"
+                >
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Ekspor CSV
+                </button>
+                <button type="button" className="btn-primary" onClick={bukaFormEvent}>
+                  <span aria-hidden="true">+</span> Tambah Event
+                </button>
+              </div>
             </div>
             <div className="rule" />
 
@@ -2004,7 +2119,16 @@ export default function EventPage() {
                           <td className="td-loc">{ev.lokasi}</td>
                           <td className="td-date">{ev.tanggal}</td>
                           <td>
-                            <span className={statusClass(ev.status)}>{ev.status}</span>
+                            <select
+                              className={`status-select ${statusClass(ev.status)}`}
+                              value={ev.status}
+                              onChange={(e) => ubahStatusEvent(ev.id, e.target.value as EventStatus)}
+                              title="Klik untuk mengubah status event langsung"
+                            >
+                              <option value="Published">Published</option>
+                              <option value="Draft">Draft</option>
+                              <option value="Closed">Closed</option>
+                            </select>
                           </td>
                           <td className="td-occ">
                             <div className="occ-text">
@@ -2067,11 +2191,7 @@ export default function EventPage() {
                 </table>
               </div>
 
-              <div className="table-foot">
-                <span>
-                  Menampilkan {hasil.length === 0 ? 0 : mulai + 1}-
-                  {Math.min(mulai + PAGE_SIZE, hasil.length)} dari {hasil.length} event
-                </span>
+              <div className="table-foot" style={{ justifyContent: "flex-end" }}>
                 <div className="pager">
                   <button
                     type="button"
@@ -2079,7 +2199,9 @@ export default function EventPage() {
                     onClick={() => setPage(currentPage - 1)}
                     aria-label="Halaman sebelumnya"
                   >
-                    ‹
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
                   </button>
                   {Array.from({ length: totalPage }, (_, i) => i + 1).map((n) => (
                     <button
@@ -2097,7 +2219,9 @@ export default function EventPage() {
                     onClick={() => setPage(currentPage + 1)}
                     aria-label="Halaman berikutnya"
                   >
-                    ›
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -2137,8 +2261,20 @@ export default function EventPage() {
                 <div className="head-row">
                   <div>
                     <h1 className="title">{detail.judul}</h1>
-                    <div style={{ marginTop: 8 }}>
-                      <span className={statusClass(detail.status)}>{detail.status}</span>
+                    <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                      <select
+                        className={`status-select ${statusClass(detail.status)}`}
+                        value={detail.status}
+                        onChange={(e) => ubahStatusEvent(detail.id, e.target.value as EventStatus)}
+                        title="Klik untuk mengubah status event langsung"
+                      >
+                        <option value="Published">Published</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Closed">Closed</option>
+                      </select>
+                      <span className="desc" style={{ fontSize: 12, margin: 0 }}>
+                        (Ubah status cepat)
+                      </span>
                     </div>
                   </div>
                   <div className="head-actions">
@@ -2667,7 +2803,12 @@ export default function EventPage() {
                     </div>
 
                     <div className="seat-scroll">
-                      <div className="seat-board">
+                      <div
+                        className="seat-board"
+                        onMouseUp={() => setIsMouseDragging(false)}
+                        onMouseLeave={() => setIsMouseDragging(false)}
+                        style={{ userSelect: "none" }}
+                      >
                         {Array.from({ length: dBaris }, (_, r) => (
                           <div key={r} className="seat-row">
                             <button
@@ -2701,7 +2842,10 @@ export default function EventPage() {
                                     aria-label={`Kursi ${rowLabel(r)}${c + 1}, ${st}${jn && st !== "kosong" ? `, jenis ${jn.label}` : ""}`}
                                     title={jn && st !== "kosong" ? `${rowLabel(r)}${c + 1} · ${jn.label}` : undefined}
                                     aria-pressed={isSel}
-                                    onClick={() => klikKursi(k)}
+                                    onMouseDown={(e) => {
+                                      if (e.button === 0) handleSeatMouseDown(k);
+                                    }}
+                                    onMouseEnter={() => handleSeatMouseEnter(k)}
                                     onDoubleClick={() => dobelKlikKursi(k)}
                                   >
                                     {st === "rusak" && !isSel ? (
@@ -2722,8 +2866,7 @@ export default function EventPage() {
                     </div>
 
                     <p className="seat-hint">
-                      Klik kursi untuk memilih (jadi hitam), atau klik huruf baris untuk memilih satu baris penuh.
-                      Klik dua kali untuk mengosongkan atau mengembalikan kursi.
+                      Klik kursi untuk memilih (jadi hitam), klik huruf baris untuk memilih 1 baris penuh, atau tahan klik mouse &amp; seret (drag) untuk memilih banyak kursi sekaligus. Klik dua kali untuk mengosongkan/mengembalikan kursi.
                     </p>
                   </div>
                 </div>

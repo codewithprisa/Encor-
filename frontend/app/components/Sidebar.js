@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -105,6 +106,50 @@ const SETTINGS = {
 export default function Sidebar({ theme, onToggleTheme, open, onClose }) {
   const pathname = usePathname();
   const isDark = theme === "dark";
+  const [counts, setCounts] = useState({ incomingOrders: 0, pendingRefunds: 0 });
+
+  useEffect(() => {
+    let alive = true;
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) return;
+
+    function fetchBadges() {
+      fetch(`${API_BASE}/api/pesanan`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (alive && Array.isArray(data)) {
+            const inc = data.filter((o) => {
+              const accepted = o.statusPesanan?.toLowerCase() === "diterima";
+              const rejected = o.statusPesanan?.toLowerCase() === "ditolak" || o.status === "Gagal";
+              return o.statusKode === "pending" && !accepted && !rejected;
+            }).length;
+            setCounts((prev) => ({ ...prev, incomingOrders: inc }));
+          }
+        })
+        .catch(() => {});
+
+      fetch(`${API_BASE}/api/refund?status=Menunggu`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (alive && Array.isArray(data)) {
+            setCounts((prev) => ({ ...prev, pendingRefunds: data.length }));
+          }
+        })
+        .catch(() => {});
+    }
+
+    fetchBadges();
+    const interval = setInterval(fetchBadges, 25000);
+    return () => {
+      alive = false;
+      clearInterval(interval);
+    };
+  }, [pathname]);
 
   function handleLogout() {
     try {
@@ -149,19 +194,33 @@ export default function Sidebar({ theme, onToggleTheme, open, onClose }) {
 
       {/* Menu utama */}
       <nav className="sb-nav" aria-label="Menu utama">
-        {MENU.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`sb-item ${isActive(item.href) ? "sb-active" : ""}`}
-            aria-current={isActive(item.href) ? "page" : undefined}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              {item.icon}
-            </svg>
-            <span>{item.label}</span>
-          </Link>
-        ))}
+        {MENU.map((item) => {
+          const badgeCount =
+            item.href === "/pesanan"
+              ? counts.incomingOrders
+              : item.href === "/refund"
+              ? counts.pendingRefunds
+              : 0;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`sb-item ${isActive(item.href) ? "sb-active" : ""}`}
+              aria-current={isActive(item.href) ? "page" : undefined}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                {item.icon}
+              </svg>
+              <span>{item.label}</span>
+              {badgeCount > 0 && (
+                <span className={`sb-badge ${item.href === "/pesanan" ? "pulse" : "blue"}`}>
+                  {badgeCount}
+                </span>
+              )}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Bawah: pengaturan, logout, tema */}
@@ -329,6 +388,41 @@ const css = `
   color: var(--sb-active-ink);
   background: var(--sb-active-bg);
   border-left-color: var(--sb-accent);
+}
+
+.sb-item span:first-of-type {
+  flex: 1;
+}
+
+.sb-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  background: #E11D48;
+  color: #FFFFFF;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 6px rgba(225, 29, 72, 0.35);
+}
+
+.sb-badge.blue {
+  background: #2563EB;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+}
+
+@keyframes sbPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.sb-badge.pulse {
+  animation: sbPulse 2.5s ease-in-out infinite;
 }
 
 .sb-item:focus-visible,

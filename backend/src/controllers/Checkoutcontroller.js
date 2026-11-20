@@ -86,6 +86,11 @@ export const createOrder = async (req, res) => {
          VALUES (?, ?, ?, ?, ?, 'active', ?)`,
         [orderId, l.ticketTypeId, l.seatId, l.qty, l.price, crypto.randomUUID()]
       );
+
+      // Tandai kursi sebagai reserved saat pesanan dibuat (sedang checkout/menunggu bayar)
+      if (l.seatId) {
+        await conn.query("UPDATE seats SET status = 'reserved' WHERE id = ?", [l.seatId]);
+      }
     }
 
     await conn.query(

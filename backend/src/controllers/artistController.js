@@ -67,7 +67,11 @@ const SELECT_ARTIS = `
          (SELECT COUNT(*) FROM events e
            WHERE e.artist_id = a.id
               OR e.id IN (SELECT ea.event_id FROM event_artists ea WHERE ea.artist_id = a.id)
-         ) AS jumlah_event
+         ) AS jumlah_event,
+         (SELECT GROUP_CONCAT(DISTINCT e.title SEPARATOR '|||') FROM events e
+           WHERE e.artist_id = a.id
+              OR e.id IN (SELECT ea.event_id FROM event_artists ea WHERE ea.artist_id = a.id)
+         ) AS daftar_event
     FROM artists a
     LEFT JOIN genres g ON g.id = a.genre_id
 `;
@@ -86,6 +90,7 @@ function mapArtis(r) {
       swatch: r.color_swatch,
     },
     jumlahEvent: Number(r.jumlah_event),
+    eventList: r.daftar_event ? r.daftar_event.split("|||").filter(Boolean) : [],
   };
 }
 

@@ -331,6 +331,7 @@
   */
   export const konfirmasiPesanan = async (req, res) => {
     const aksi = String((req.body || {}).aksi || "").trim().toLowerCase();
+    const alasan = String((req.body || {}).alasan || "").trim();
 
     if (!["terima", "tolak"].includes(aksi)) {
       return res.status(400).json({ message: "Aksi harus 'terima' atau 'tolak'." });
@@ -374,9 +375,14 @@
         aksi === "terima"
           ? [
               "Pesanan diterima",
-              `Pesanan ${order.invoice_number} diterima. Silakan selesaikan pembayaran.`,
+              `Pesanan ${order.invoice_number} diterima. Pembayaran telah diverifikasi.`,
             ]
-          : ["Pesanan ditolak", `Pesanan ${order.invoice_number} tidak dapat diproses.`];
+          : [
+              "Pesanan ditolak",
+              alasan
+                ? `Pesanan ${order.invoice_number} ditolak. Alasan: ${alasan}`
+                : `Pesanan ${order.invoice_number} tidak dapat diproses.`,
+            ];
 
       await conn.query(
         `INSERT INTO notifications

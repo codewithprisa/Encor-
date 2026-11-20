@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,7 +49,6 @@ export default function LoginPage() {
         throw new Error(data.message || "Login gagal.");
       }
 
-      // Sesuaikan dengan format respons backend kamu.
       if (data.user && data.user.role !== "admin") {
         throw new Error("Akun ini tidak memiliki akses admin.");
       }
@@ -68,143 +68,255 @@ export default function LoginPage() {
   }
 
   return (
-    <main className={`page ${inter.className}`}>
+    <main className={`login-page ${inter.className}`}>
       <style>{css}</style>
 
-      {/* Background layer dengan foto konser (low opacity) + layer netral tipis */}
-      <div className="bg-container" aria-hidden="true">
+      {/* Decorative Background Full Image & Gradients & Sparkles */}
+      <div className="bg-canvas" aria-hidden="true">
         <Image
           src={bgConcert}
           alt=""
           fill
           priority
-          quality={85}
+          quality={88}
           sizes="100vw"
-          className="bg-photo"
+          className="bg-photo-full"
         />
-        <div className="bg-overlay" />
+        <div className="bg-canvas-overlay" />
+
+        <div className="wave wave-top" />
+        <div className="wave wave-bottom" />
+        <div className="wave wave-right" />
+
+        {/* Floating Sparkles */}
+        <span className="sparkle sp-1">✦</span>
+        <span className="sparkle sp-2">✦</span>
+        <span className="sparkle sp-3">✦</span>
+        <span className="sparkle sp-4">✦</span>
       </div>
 
-      <div className="content-wrapper">
-        {/* Brand */}
-        <div className="brand">
-          <div className="brand-badge">
+      <div className="login-container">
+        {/* Sisi Kiri: Branding & Welcome Area */}
+        <section className="left-hero">
+          {/* Logo Brand */}
+          <div className="brand-header">
             <Image
               src={logo}
               alt="Logo Encoré"
-              className="brand-icon"
+              className="brand-logo-img"
               priority
             />
+            <span className="brand-logo-text">Encoré</span>
           </div>
 
-          <h1 className="brand-name">Encoré</h1>
-          <p className="brand-sub">Manajemen Konser</p>
-        </div>
-
-        {/* Login Card */}
-        <section className="card" aria-labelledby="login-title">
-          <h2 id="login-title" className="card-title">
-            Masuk ke Dasbor
-          </h2>
-
-          <form onSubmit={handleSubmit} noValidate>
-            {/* Email */}
-            <div className="field">
-              <label htmlFor="email" className="label">
-                Alamat Email
-              </label>
-
-              <div className="input-wrap">
-                <svg className="icon-left" viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="3" y="5" width="18" height="14" rx="2" />
-                  <path d="m3 7 9 6 9-6" />
-                </svg>
-
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="admin@gmail.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+          {/* Heading with celebration spark */}
+          <div className="hero-text-block">
+            <div className="headline-row">
+              <h1 className="hero-headline">
+                Welcome back,<br />
+                Admin!
+              </h1>
+              <div className="burst-sparks" aria-hidden="true">
+                <span className="burst b-1" />
+                <span className="burst b-2" />
+                <span className="burst b-3" />
               </div>
             </div>
 
-            {/* Password */}
-            <div className="field">
-              <div className="label-row">
-                <label htmlFor="password" className="label">
-                  Kata Sandi
+            <p className="hero-subtext">
+              Kelola event, tiket, dan pengalaman konser terbaik di Encoré.
+            </p>
+          </div>
+
+          {/* 3 Fitur Unggulan di bagian bawah */}
+          <div className="features-row">
+            <div className="feature-item">
+              <span className="feat-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="3" />
+                  <path d="M16 2v4M8 2v4M3 10h18" />
+                  <path d="m9 16 2 2 4-4" />
+                </svg>
+              </span>
+              <span className="feat-text">Kelola Event dengan Mudah</span>
+            </div>
+
+            <div className="feat-divider" />
+
+            <div className="feature-item">
+              <span className="feat-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+              </span>
+              <span className="feat-text">Pantau Penjualan Tiket</span>
+            </div>
+
+            <div className="feat-divider" />
+
+            <div className="feature-item">
+              <span className="feat-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 20V10M12 20V4M6 20v-6" />
+                  <circle cx="12" cy="4" r="1.5" />
+                </svg>
+              </span>
+              <span className="feat-text">Lihat Statistik Secara Real-time</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Sisi Kanan: Form Kartu Login */}
+        <section className="right-card-wrap">
+          <div className="login-card">
+            {/* Logo Brand di dalam Card */}
+            <div className="card-brand-header">
+              <Image
+                src={logo}
+                alt="Logo Encoré"
+                className="card-logo-img"
+                priority
+              />
+              <span className="card-logo-text">Encoré</span>
+            </div>
+
+            <h2 className="card-title">Masuk ke Dashboard Admin</h2>
+            <p className="card-subtitle">
+              Akses panel pengelolaan Encoré dengan akun Anda.
+            </p>
+
+            <form onSubmit={handleSubmit} noValidate>
+              <div className="form-field">
+                <label htmlFor="login-email" className="field-label">
+                  Email
+                </label>
+                <div className="input-box">
+                  <svg className="field-icon-left" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="14" rx="2" />
+                    <path d="m3 7 9 6 9-6" />
+                  </svg>
+                  <input
+                    id="login-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="admin@encore.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Field Password */}
+              <div className="form-field">
+                <label htmlFor="login-password" className="field-label">
+                  Password
+                </label>
+                <div className="input-box">
+                  <svg className="field-icon-left" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="5" y="11" width="14" height="9" rx="2" />
+                    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                  </svg>
+                  <input
+                    id="login-password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder="Masukkan password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="toggle-password-btn"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      {showPassword ? (
+                        <>
+                          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                          <circle cx="12" cy="12" r="3" />
+                          <path d="M4 20 20 4" />
+                        </>
+                      ) : (
+                        <>
+                          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </>
+                      )}
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Row Ingat Saya & Lupa Password */}
+              <div className="remember-row">
+                <label className="checkbox-wrap">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
+                  <span>Ingat saya</span>
                 </label>
 
-                <a href="/lupa-sandi" className="link-small">
-                  Lupa Sandi?
+                <a href="/lupa-sandi" className="forgot-link">
+                  Lupa password?
                 </a>
               </div>
 
-              <div className="input-wrap">
-                <svg className="icon-left" viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="5" y="11" width="14" height="9" rx="2" />
-                  <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-                </svg>
-
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-
-                <button
-                  type="button"
-                  className="icon-right"
-                  onClick={() => setShowPassword((value) => !value)}
-                  aria-label={
-                    showPassword
-                      ? "Sembunyikan kata sandi"
-                      : "Tampilkan kata sandi"
-                  }
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
-                    <circle cx="12" cy="12" r="3" />
-                    {showPassword && <path d="M4 20 20 4" />}
+              {/* Alert Error */}
+              {error && (
+                <div role="alert" className="error-alert">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
-                </button>
-              </div>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <button type="submit" className="login-submit-btn" disabled={loading}>
+                {loading ? (
+                  <>
+                    <span className="btn-spinner" aria-hidden="true" />
+                    <span>Memeriksa...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                      <polyline points="10 17 15 12 10 7" />
+                      <line x1="15" y1="12" x2="3" y2="12" />
+                    </svg>
+                    <span>Masuk</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Separator / Pembatas */}
+            <div className="or-divider">
+              <span className="or-line" />
+              <span className="or-text">atau</span>
+              <span className="or-line" />
             </div>
 
-            {/* Remember Me */}
-            <label className="remember">
-              <input type="checkbox" />
-              <span>Tetap masuk selama 30 hari</span>
-            </label>
-
-            {/* Error */}
-            {error && (
-              <p
-                role="alert"
-                className="error-message"
-              >
-                {error}
-              </p>
-            )}
-
-            {/* Login Button */}
-            <button type="submit" className="btn" disabled={loading}>
-              {loading ? "Memeriksa..." : "Masuk"}
-            </button>
-          </form>
-
-          {/* Help */}
-          <div className="help">
-            <p>Butuh akses bantuan?</p>
-            <a href="mailto:it-support@perusahaan.com">HUBUNGI DUKUNGAN TI</a>
+            {/* Tombol Bantuan / Support */}
+            <a
+              href="mailto:support@encore.com"
+              className="support-btn"
+              title="Hubungi Dukungan Encoré"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+              </svg>
+              <span>Butuh bantuan? Hubungi tim support</span>
+            </a>
           </div>
         </section>
       </div>
@@ -214,19 +326,14 @@ export default function LoginPage() {
 
 const css = `
 :root {
-  --bg-base: #F8F6F2;
-  --ink: #19212A;
-  --ink-secondary: #475467;
-  --muted: #667085;
-  --placeholder: #98A2B3;
-  --border-input: #D0D5DD;
-  --border-focus: #2B6389;
-  --primary: #2B6389;
-  --primary-hover: #225170;
-  --primary-shadow: rgba(43, 99, 137, 0.25);
-  --link: #2B6389;
-  --error: #D92D20;
-  --error-bg: #FEF3F2;
+  --bg-creamy: #FBF8F1;
+  --sky-blue: #5FA5E6;
+  --sky-blue-hover: #4C94D7;
+  --sky-light: #EBF4FC;
+  --navy-dark: #12253E;
+  --navy-muted: #5A6D82;
+  --border-light: #E2E8F0;
+  --white: #FFFFFF;
 }
 
 * {
@@ -235,384 +342,652 @@ const css = `
   padding: 0;
 }
 
-html,
-body {
+html, body {
   min-height: 100%;
-  background: var(--bg-base);
-  color: var(--ink);
+  background: var(--bg-creamy);
+  color: var(--navy-dark);
+  -webkit-font-smoothing: antialiased;
 }
 
-.page {
+/* Page Layout */
+.login-page {
   position: relative;
   min-height: 100vh;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 20px;
+  padding: 32px 24px;
   overflow: hidden;
+  background: linear-gradient(135deg, #FFFDF8 0%, #FAF5EB 45%, #EFF6FD 100%);
 }
 
-/* Background photo & subtle neutral overlay */
-.bg-container {
+/* Ambient Canvas Background with Full Photo & Gradients & Sparkles */
+.bg-canvas {
   position: fixed;
   inset: 0;
-  z-index: 0;
   pointer-events: none;
-  background-color: var(--bg-base);
+  z-index: 0;
+  overflow: hidden;
+  background-color: var(--bg-creamy);
 }
 
-.bg-photo {
+.bg-photo-full {
   object-fit: cover;
-  object-position: center;
-  opacity: 0.72;
-  filter: saturate(1.1) contrast(1.05);
+  object-position: center bottom;
+  opacity: 0.32;
+  filter: saturate(1.15) contrast(1.05);
 }
 
-.bg-overlay {
+.bg-canvas-overlay {
   position: absolute;
   inset: 0;
-  /* Layar warna netral tipis di atas background konser */
-  background: radial-gradient(
-    circle at 50% 45%,
-    rgba(255, 255, 255, 0.32) 0%,
-    rgba(238, 235, 229, 0.46) 100%
+  background: linear-gradient(
+    135deg,
+    rgba(255, 253, 248, 0.78) 0%,
+    rgba(250, 245, 235, 0.72) 45%,
+    rgba(239, 246, 253, 0.76) 100%
   );
+  backdrop-filter: blur(2px);
 }
 
-/* Content wrapper */
-.content-wrapper {
+.wave {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.75;
+}
+
+.wave-top {
+  top: -120px;
+  left: -80px;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(255, 237, 213, 0.7) 0%, rgba(254, 243, 199, 0) 70%);
+}
+
+.wave-bottom {
+  bottom: -140px;
+  left: 20%;
+  width: 600px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(199, 226, 253, 0.65) 0%, rgba(224, 242, 254, 0) 70%);
+}
+
+.wave-right {
+  top: 10%;
+  right: -100px;
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, rgba(186, 230, 253, 0.5) 0%, rgba(254, 249, 195, 0.25) 50%, rgba(255, 255, 255, 0) 70%);
+}
+
+/* Sparkles (✦) */
+.sparkle {
+  position: absolute;
+  font-family: sans-serif;
+  user-select: none;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.sp-1 {
+  top: 10%;
+  left: 48%;
+  color: #7DB5EC;
+  font-size: 28px;
+  opacity: 0.85;
+}
+
+.sp-2 {
+  top: 7%;
+  right: 5%;
+  color: #F8B854;
+  font-size: 32px;
+  opacity: 0.8;
+}
+
+.sp-3 {
+  bottom: 12%;
+  left: 6%;
+  color: #8CC2F5;
+  font-size: 24px;
+  opacity: 0.75;
+}
+
+.sp-4 {
+  bottom: 8%;
+  right: 2%;
+  color: #92C6F8;
+  font-size: 34px;
+  opacity: 0.8;
+}
+
+/* Two-column Container */
+.login-container {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 410px;
-  display: flex;
-  flex-direction: column;
+  max-width: 1140px;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
   align-items: center;
+  gap: 48px;
 }
 
-/* Brand */
-.brand {
-  text-align: center;
-  margin-bottom: 22px;
+/* ==================== SISI KIRI (HERO) ==================== */
+.left-hero {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  justify-content: space-between;
+  min-height: 540px;
+  padding: 12px 16px 12px 0;
 }
 
-.brand-badge {
-  display: inline-flex;
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 36px;
+}
+
+.brand-logo-img {
+  width: 40px;
+  height: auto;
+  object-fit: contain;
+}
+
+.brand-logo-text {
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  color: var(--navy-dark);
+}
+
+.hero-text-block {
+  margin-bottom: 36px;
+  z-index: 2;
+}
+
+.headline-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.hero-headline {
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--navy-dark);
+}
+
+/* Radiating celebration sparks */
+.burst-sparks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 14px;
+}
+
+.burst {
+  display: block;
+  height: 3.5px;
+  border-radius: 999px;
+}
+
+.b-1 {
+  width: 14px;
+  background: #F8B854;
+  transform: rotate(-25deg);
+}
+
+.b-2 {
+  width: 22px;
+  background: #6EAEEA;
+  transform: rotate(0deg);
+}
+
+.b-3 {
+  width: 16px;
+  background: #89C2F5;
+  transform: rotate(25deg);
+}
+
+.hero-subtext {
+  margin-top: 16px;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--navy-muted);
+  max-width: 370px;
+}
+
+/* 3 Feature Highlights */
+.features-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 24px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  display: grid;
+  place-items: center;
+  color: #4A86C5;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.feat-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.feat-text {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #334E68;
+  max-width: 110px;
+}
+
+.feat-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(148, 163, 184, 0.35);
+  flex-shrink: 0;
+}
+
+/* ==================== SISI KANAN (CARD) ==================== */
+.right-card-wrap {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--white);
+  border-radius: 28px;
+  padding: 40px 36px 34px;
+  box-shadow:
+    0 24px 56px -8px rgba(32, 60, 95, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-brand-header {
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 60px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow:
-    0 10px 24px -4px rgba(0, 0, 0, 0.18),
-    0 0 0 1px rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  gap: 10px;
   margin-bottom: 12px;
-  transition: transform 0.2s ease;
 }
 
-.brand-badge:hover {
-  transform: translateY(-2px);
-}
-
-.brand-icon {
-  width: 36px;
+.card-logo-img {
+  width: 34px;
   height: auto;
-  display: block;
+  object-fit: contain;
 }
 
-.brand-name {
-  font-size: 30px;
-  font-weight: 700;
+.card-logo-text {
+  font-size: 23px;
+  font-weight: 750;
   letter-spacing: -0.025em;
-  color: #111827;
-  line-height: 1.2;
-  text-shadow: 0 1px 16px rgba(255, 255, 255, 0.95), 0 0 6px rgba(255, 255, 255, 0.85);
-}
-
-.brand-sub {
-  margin-top: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #1f2937;
-  text-shadow: 0 1px 12px rgba(255, 255, 255, 0.95);
-}
-
-/* Login Card */
-.card {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  padding: 32px 30px 26px;
-  box-shadow:
-    0 24px 48px -12px rgba(0, 0, 0, 0.24),
-    0 8px 20px -2px rgba(0, 0, 0, 0.10),
-    0 0 0 1px rgba(255, 255, 255, 0.85);
+  color: var(--navy-dark);
 }
 
 .card-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--ink);
-  margin-bottom: 22px;
-  letter-spacing: -0.01em;
+  font-size: 19px;
+  font-weight: 750;
+  color: var(--navy-dark);
+  text-align: center;
+  letter-spacing: -0.015em;
 }
 
-.field {
-  margin-bottom: 18px;
+.card-subtitle {
+  font-size: 13px;
+  color: var(--navy-muted);
+  text-align: center;
+  margin-top: 5px;
+  margin-bottom: 24px;
+  line-height: 1.45;
 }
 
-.label {
+/* Form Styles */
+.form-field {
+  margin-bottom: 16px;
+}
+
+.field-label {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ink-secondary);
+  color: var(--navy-dark);
   margin-bottom: 7px;
 }
 
-.label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 7px;
-}
-
-.label-row .label {
-  margin-bottom: 0;
-}
-
-.link-small {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--link);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.link-small:hover {
-  text-decoration: underline;
-}
-
-.input-wrap {
+.input-box {
   position: relative;
   display: flex;
   align-items: center;
-}
-
-.input-wrap input {
-  width: 100%;
-  height: 44px;
-  padding: 0 42px 0 40px;
-  font: inherit;
-  font-size: 13.5px;
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid var(--border-input);
+  height: 46px;
+  border: 1.5px solid var(--border-light);
   border-radius: 12px;
-  outline: none;
-  transition: all 0.18s ease;
+  background: var(--white);
+  padding: 0 14px;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
-.input-wrap input::placeholder {
-  color: var(--placeholder);
+.input-box:focus-within {
+  border-color: var(--sky-blue);
+  box-shadow: 0 0 0 3px rgba(95, 165, 230, 0.22);
 }
 
-.input-wrap input:hover {
-  border-color: #B2BAC5;
-  background: #ffffff;
-}
-
-.input-wrap input:focus {
-  border-color: var(--border-focus);
-  background: #ffffff;
-  box-shadow: 0 0 0 3.5px var(--primary-shadow);
-}
-
-.input-wrap:focus-within .icon-left {
-  stroke: var(--primary);
-}
-
-.icon-left,
-.icon-right svg {
-  width: 17px;
-  height: 17px;
+.field-icon-left {
+  width: 18px;
+  height: 18px;
   fill: none;
-  stroke: #7D8A99;
+  stroke: #94A3B8;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: stroke 0.18s ease;
+  flex-shrink: 0;
+  margin-right: 10px;
+  transition: stroke 0.16s ease;
 }
 
-.icon-left {
-  position: absolute;
-  left: 14px;
-  pointer-events: none;
+.input-box:focus-within .field-icon-left {
+  stroke: var(--sky-blue);
 }
 
-.icon-right {
-  position: absolute;
-  right: 8px;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
+.input-box input {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 0 !important;
+  background: transparent;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--navy-dark);
+}
+
+.input-box input::placeholder {
+  color: #94A3B8;
+  opacity: 0.85;
+}
+
+.toggle-password-btn {
   background: none;
   border: 0;
-  border-radius: 8px;
+  padding: 4px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  display: grid;
+  place-items: center;
+  color: #94A3B8;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
-.icon-right:hover {
-  background: rgba(0, 0, 0, 0.05);
+.toggle-password-btn:hover {
+  color: var(--navy-dark);
+  background: rgba(0, 0, 0, 0.04);
 }
 
-.icon-right:focus-visible {
-  outline: 2px solid var(--border-focus);
+.toggle-password-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.remember {
+/* Remember me & Forgot Password */
+.remember-row {
   display: flex;
   align-items: center;
-  gap: 9px;
-  font-size: 12.5px;
-  color: var(--ink-secondary);
-  margin-bottom: 20px;
+  justify-content: space-between;
+  margin-top: 14px;
+  margin-bottom: 22px;
+}
+
+.checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #475569;
   cursor: pointer;
   user-select: none;
 }
 
-.remember input {
-  width: 15px;
-  height: 15px;
+.checkbox-wrap input {
+  width: 16px;
+  height: 16px;
   border-radius: 4px;
-  accent-color: var(--primary);
+  accent-color: var(--sky-blue);
   cursor: pointer;
 }
 
-.error-message {
-  color: var(--error);
-  background: var(--error-bg);
-  border: 1px solid rgba(217, 45, 32, 0.2);
+.forgot-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4A93D8;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.forgot-link:hover {
+  color: #2F7AC2;
+  text-decoration: underline;
+}
+
+/* Error Alert */
+.error-alert {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  background: #FEF2F2;
+  border: 1px solid #FEE2E2;
   border-radius: 10px;
-  padding: 9px 12px;
+  color: #DC2626;
   font-size: 12.5px;
   font-weight: 500;
   margin-bottom: 16px;
-  display: flex;
-  align-items: center;
+  animation: fadeIn 0.2s ease;
 }
 
-.btn {
+.error-alert svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+/* Submit Button */
+.login-submit-btn {
   width: 100%;
-  height: 44px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  background: var(--sky-blue);
+  color: var(--white);
   font: inherit;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #fff;
-  background: linear-gradient(135deg, #2B6389 0%, #204B67 100%);
+  font-size: 14.5px;
+  font-weight: 650;
   border: 0;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
-  box-shadow: 0 4px 14px -1px var(--primary-shadow);
-  transition: all 0.18s ease;
+  box-shadow: 0 4px 14px rgba(95, 165, 230, 0.38);
+  transition: background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
 
-.btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #32739F 0%, #255779 100%);
-  box-shadow: 0 6px 18px -1px rgba(43, 99, 137, 0.38);
+.login-submit-btn:hover:not(:disabled) {
+  background: var(--sky-blue-hover);
   transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(76, 148, 215, 0.45);
 }
 
-.btn:active:not(:disabled) {
+.login-submit-btn:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(43, 99, 137, 0.25);
 }
 
-.btn:disabled {
+.login-submit-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
   transform: none;
 }
 
-.btn:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+.btn-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2.2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  animation: spin 0.8s linear infinite;
 }
 
-.help {
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(208, 213, 221, 0.6);
-  text-align: center;
+/* Or Divider */
+.or-divider {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 16px;
 }
 
-.help p {
+.or-line {
+  flex: 1;
+  height: 1px;
+  background: #E2E8F0;
+}
+
+.or-text {
   font-size: 12px;
-  color: var(--muted);
+  color: #94A3B8;
+  font-weight: 500;
 }
 
-.help a {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--link);
+/* Support Button */
+.support-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 42px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--white);
+  color: #475569;
+  font-size: 12.5px;
+  font-weight: 500;
   text-decoration: none;
-  transition: color 0.15s ease;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.help a:hover {
-  text-decoration: underline;
-  color: var(--primary-hover);
+.support-btn:hover {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+  color: var(--navy-dark);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 980px) {
+  .login-container {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+    gap: 32px;
+  }
+
+  .left-hero {
+    min-height: auto;
+    text-align: center;
+    align-items: center;
+    padding: 0;
+  }
+
+  .brand-header {
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+
+  .headline-row {
+    justify-content: center;
+  }
+
+  .hero-headline {
+    font-size: 34px;
+  }
+
+  .hero-subtext {
+    margin: 12px auto 20px;
+  }
+
+  .concert-silhouette-wrap {
+    display: none;
+  }
+
+  .features-row {
+    display: none;
+  }
+
+  .right-card-wrap {
+    justify-content: center;
+  }
 }
 
 @media (max-width: 480px) {
-  .page {
-    padding: 24px 16px;
+  .login-page {
+    padding: 20px 16px;
   }
 
-  .card {
-    padding: 26px 20px 22px;
-    border-radius: 18px;
+  .login-card {
+    padding: 28px 20px 24px;
+    border-radius: 22px;
   }
 
-  .brand-badge {
-    width: 52px;
-    height: 52px;
-    border-radius: 15px;
-  }
-
-  .brand-name {
-    font-size: 26px;
+  .hero-headline {
+    font-size: 28px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     transition: none !important;
+    animation: none !important;
   }
 }
 `;

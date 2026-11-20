@@ -25,6 +25,8 @@ function mapGenre(r) {
     colorSwatch: r.color_swatch,
     jumlahArtis: Number(r.jumlah_artis),
     jumlahEvent: Number(r.jumlah_event),
+    artisList: r.daftar_artis ? r.daftar_artis.split("|||").filter(Boolean) : [],
+    eventList: r.daftar_event ? r.daftar_event.split("|||").filter(Boolean) : [],
   };
 }
 
@@ -61,7 +63,9 @@ function warnaFinal(g) {
 const SELECT_GENRE = `
   SELECT g.id, g.genre_name, g.color_bg, g.color_text, g.color_swatch,
          (SELECT COUNT(*) FROM artists a WHERE a.genre_id = g.id) AS jumlah_artis,
-         (SELECT COUNT(*) FROM events  e WHERE e.genre_id = g.id) AS jumlah_event
+         (SELECT COUNT(*) FROM events  e WHERE e.genre_id = g.id) AS jumlah_event,
+         (SELECT GROUP_CONCAT(DISTINCT a.artist_name SEPARATOR '|||') FROM artists a WHERE a.genre_id = g.id) AS daftar_artis,
+         (SELECT GROUP_CONCAT(DISTINCT e.title SEPARATOR '|||') FROM events e WHERE e.genre_id = g.id) AS daftar_event
     FROM genres g
 `;
 

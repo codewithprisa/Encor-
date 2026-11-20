@@ -14,11 +14,10 @@ import { Inter } from "next/font/google";
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 /* ───────────── Koneksi API ───────────── */
-const API = "http://localhost:3001";
-
-// Sesuaikan key ini dengan tempat kamu menyimpan token saat login
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const TOKEN_KEY = "token";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
 
@@ -33,7 +32,6 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
       },
     });
   } catch {
-    // fetch gagal total: server mati, URL salah, atau diblok browser
     throw new Error(`Tidak bisa terhubung ke server (${API}). Pastikan backend sudah berjalan.`);
   }
 
@@ -49,19 +47,18 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
 type Genre = {
   id: string;
   name: string;
-  color: string; // warna badge (hex)
-  artists: number; // jumlah artis (dihitung di backend)
-  events: number; // jumlah event (dihitung di backend)
+  color: string;
+  artists: number;
+  events: number;
+  artisList: string[];
+  eventList: string[];
   createdAt: string;
 };
 
 const PALETTE = ["#3B82C4", "#0EA5A4", "#16A34A", "#C08A2B", "#E0728F", "#8B5CF6", "#6B7280"];
 const PAGE_SIZE = 8;
 
-type SortKey = "name" | "artists" | "newest";
-
-// Mapper: ubah response backend -> tipe Genre.
-// Kalau nama field di backend beda, tambahkan/ubah di sini saja.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toGenre(g: any): Genre {
   return {
     id: String(g.id ?? g._id),
@@ -69,12 +66,27 @@ function toGenre(g: any): Genre {
     color: g.warna ?? g.colorSwatch ?? g.color ?? "#6B7280",
     artists: Number(g.jumlahArtis ?? g.artists ?? 0),
     events: Number(g.jumlahEvent ?? g.events ?? 0),
-    createdAt: g.createdAt ?? g.created_at ?? "", // backend belum mengirim; "Terbaru" diurutkan pakai id
+    artisList: Array.isArray(g.artisList) ? g.artisList : [],
+    eventList: Array.isArray(g.eventList) ? g.eventList : [],
+    createdAt: g.createdAt ?? g.created_at ?? "",
   };
 }
 
 /* ───────────── Helpers ───────────── */
 const nf = new Intl.NumberFormat("id-ID");
+
+function useModal(onClose: () => void) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+}
 
 /* ───────────── Ikon ───────────── */
 function Icon({ children, size = 18 }: { children: ReactNode; size?: number }) {
@@ -90,6 +102,7 @@ const IStar = () => <Icon><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 
 const ICalendar = () => <Icon><rect x="3" y="5" width="18" height="16" rx="2.5" /><path d="M3 10h18M8 3v4M16 3v4" /></Icon>;
 const IEdit = () => <Icon size={16}><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4ZM13.5 6.5l4 4" /></Icon>;
 const ITrash = () => <Icon size={16}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></Icon>;
+const IEye = () => <Icon size={16}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></Icon>;
 const IClose = () => <Icon><path d="M6 6l12 12M18 6 6 18" /></Icon>;
 const ISearch = () => <Icon size={16}><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4-4" /></Icon>;
 const IPrev = () => <Icon size={14}><path d="m15 5-7 7 7 7" /></Icon>;
@@ -104,17 +117,10 @@ const IEmpty = () => (
 );
 
 /* ───────────── Komponen kecil ───────────── */
-function Chip({ name, color, size = 34 }: { name: string; color: string; size?: number }) {
+function BadgePill({ name, color }: { name: string; color: string }) {
   return (
-    <span className="chip" style={{ "--c": color, width: size, height: size, fontSize: size * 0.42 } as CSSProperties}>
-      {name.trim()[0]?.toUpperCase() || "?"}
-    </span>
-  );
-}
-
-function Badge({ name, color, large }: { name: string; color: string; large?: boolean }) {
-  return (
-    <span className={`badge ${large ? "lg" : ""}`} style={{ "--c": color } as CSSProperties}>
+    <span className="badge-pill" style={{ "--c": color } as CSSProperties}>
+      <i />
       {name || "Nama Genre"}
     </span>
   );
@@ -130,6 +136,91 @@ function StatCard({ icon, label, value, hint }: { icon: ReactNode; label: string
         <p className="stat-hint">{hint}</p>
       </div>
     </article>
+  );
+}
+
+/* ───────────── Modal detail artis & event ───────────── */
+function DetailGenreModal({
+  genre,
+  onClose,
+  onEdit,
+}: {
+  genre: Genre;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
+  useModal(onClose);
+
+  return (
+    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="det-title">
+        <header className="modal-head">
+          <div>
+            <h2 id="det-title">Detail Genre</h2>
+            <div style={{ marginTop: 6 }}>
+              <BadgePill name={genre.name} color={genre.color} />
+            </div>
+          </div>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Tutup">
+            <IClose />
+          </button>
+        </header>
+
+        <div className="modal-body">
+          {/* Section Artis */}
+          <section className="detail-sec">
+            <div className="sec-head">
+              <h3>Daftar Artis ({genre.artists})</h3>
+            </div>
+            {genre.artisList.length > 0 ? (
+              <div className="tag-wrap">
+                {genre.artisList.map((artisName) => (
+                  <span key={artisName} className="tag-pill">
+                    <span className="tag-dot" style={{ background: genre.color }} />
+                    {artisName}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="muted small">Belum ada artis terdaftar dalam genre ini. Artis dapat ditambahkan melalui menu <strong>Artis</strong>.</p>
+            )}
+          </section>
+
+          {/* Section Event */}
+          <section className="detail-sec" style={{ marginTop: 14 }}>
+            <div className="sec-head">
+              <h3>Konser & Event Terkait ({genre.events})</h3>
+            </div>
+            {genre.eventList.length > 0 ? (
+              <div className="tag-wrap">
+                {genre.eventList.map((evTitle) => (
+                  <span key={evTitle} className="tag-pill event">
+                    <ICalendar />
+                    {evTitle}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="muted small">Belum ada event konser yang menggunakan genre ini.</p>
+            )}
+          </section>
+        </div>
+
+        <footer className="modal-foot">
+          <button type="button" className="btn-ghost" onClick={onClose}>Tutup</button>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              onClose();
+              onEdit();
+            }}
+          >
+            <IEdit /> Ubah Genre
+          </button>
+        </footer>
+      </div>
+    </div>
   );
 }
 
@@ -153,21 +244,10 @@ function GenreModal({
   const customRef = useRef<HTMLInputElement>(null);
   const isCustom = !PALETTE.includes(color);
 
-  // simpan onClose terbaru di ref supaya efek di bawah tidak jalan ulang
-  // (dan tidak merebut fokus input) setiap parent re-render
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useModal(onClose);
 
   useEffect(() => {
     nameRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCloseRef.current();
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
   }, []);
 
   async function submit(e: FormEvent) {
@@ -184,7 +264,6 @@ function GenreModal({
       setSaving(true);
       await onSave({ name: trimmed, color });
     } catch (err) {
-      // error dari server (mis. duplikat, belum login, bukan admin) tampil di form
       setError((err as Error).message);
       setSaving(false);
     }
@@ -258,8 +337,10 @@ function GenreModal({
           </div>
 
           <div className="preview">
-            <span className="hint">Preview badge</span>
-            <Badge name={name.trim()} color={color} large />
+            <span className="hint">Pratinjau Badge:</span>
+            <div style={{ marginTop: 8 }}>
+              <BadgePill name={name.trim() || "Nama Genre"} color={color} />
+            </div>
           </div>
         </div>
 
@@ -286,14 +367,7 @@ function ConfirmDelete({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const onCancelRef = useRef(onCancel);
-  onCancelRef.current = onCancel;
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancelRef.current();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  useModal(onCancel);
 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && !busy && onCancel()}>
@@ -306,12 +380,12 @@ function ConfirmDelete({
           </p>
           {genre.artists > 0 && (
             <p className="alert">
-              Genre ini masih dipakai oleh {nf.format(genre.artists)} artis, jadi belum bisa dihapus. Pindahkan artis tersebut ke genre lain dulu.
+              Genre ini masih dipakai oleh {nf.format(genre.artists)} artis, jadi belum bisa dihapus. Pindahkan artis tersebut ke genre lain terlebih dahulu di halaman Artis.
             </p>
           )}
           {genre.artists === 0 && genre.events > 0 && (
             <p className="alert">
-              Genre ini dipakai {nf.format(genre.events)} event. Event tetap ada, tapi akan kehilangan genre.
+              Genre ini dipakai {nf.format(genre.events)} event. Event tetap ada, tetapi tidak memiliki asosiasi genre.
             </p>
           )}
         </div>
@@ -326,16 +400,16 @@ function ConfirmDelete({
   );
 }
 
-/* ───────────── Halaman ───────────── */
+/* ───────────── Halaman Utama ───────────── */
 export default function GenrePage() {
   const [genres, setGenres] = useState<Genre[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortKey>("name");
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<{ mode: "create" } | { mode: "edit"; genre: Genre } | null>(null);
+  const [detailGenre, setDetailGenre] = useState<Genre | null>(null);
   const [toDelete, setToDelete] = useState<Genre | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -343,14 +417,16 @@ export default function GenrePage() {
   function showToast(msg: string) {
     setToast(msg);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(null), 2600);
+    timer.current = setTimeout(() => setToast(null), 2800);
   }
 
   /* ── Ambil data dari backend: GET /api/genre ── */
   async function loadGenres() {
     try {
       setLoadError(null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const res = await request<any>("/genre");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const list: any[] = Array.isArray(res) ? res : (res.data ?? []);
       setGenres(list.map(toGenre));
     } catch (e) {
@@ -379,14 +455,8 @@ export default function GenrePage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = genres.filter((g) => !q || g.name.toLowerCase().includes(q));
-    return list.sort((a, b) =>
-      sort === "name"
-        ? a.name.localeCompare(b.name, "id")
-        : sort === "artists"
-          ? b.artists - a.artists
-          : Number(b.id) - Number(a.id),
-    );
-  }, [genres, query, sort]);
+    return list.sort((a, b) => a.name.localeCompare(b.name, "id"));
+  }, [genres, query]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -394,9 +464,7 @@ export default function GenrePage() {
   const rows = filtered.slice(start, start + PAGE_SIZE);
 
   /* ── Simpan: POST /api/genre atau PUT /api/genre/:id ── */
-  // Error sengaja tidak di-catch di sini; modal yang menampilkannya di form.
   async function handleSave(data: { name: string; color: string }) {
-    // backend menerima `nama` dan `warna` (hex 6 digit, mis. #A855F7)
     const body = JSON.stringify({ nama: data.name, warna: data.color });
 
     if (modal?.mode === "edit") {
@@ -417,7 +485,6 @@ export default function GenrePage() {
     if (!toDelete) return;
     try {
       setDeleting(true);
-      // admin sudah konfirmasi lewat dialog, jadi kirim ?paksa=1 kalau genre masih dipakai event
       const paksa = toDelete.events > 0 ? "?paksa=1" : "";
       await request(`/genre/${toDelete.id}${paksa}`, { method: "DELETE" });
       showToast("Genre berhasil dihapus.");
@@ -443,7 +510,7 @@ export default function GenrePage() {
               <span>Dashboard</span><span aria-hidden="true">/</span><strong>Genre</strong>
             </nav>
             <h1>Kelola Genre</h1>
-            <p className="sub">Atur klasifikasi musik untuk memudahkan pemetaan artis dan segmentasi event konser Anda.</p>
+            <p className="sub">Atur klasifikasi musik untuk pemetaan artis dan segmentasi event konser Anda.</p>
           </div>
           <button className="btn-primary lg" onClick={() => setModal({ mode: "create" })}>
             <IPlus /> Tambah Genre
@@ -460,13 +527,13 @@ export default function GenrePage() {
           />
           <StatCard
             icon={<IStar />}
-            label="Genre Terlaris"
+            label="Artis Terbanyak"
             value={stats.top ? stats.top.name : "—"}
-            hint={stats.top ? `${nf.format(stats.top.artists)} Artis` : "Belum ada data"}
+            hint={stats.top ? `${nf.format(stats.top.artists)} Artis terdaftar` : "Belum ada data"}
           />
           <StatCard
             icon={<ICalendar />}
-            label="Total Event"
+            label="Total Event Konser"
             value={loading ? "…" : nf.format(stats.events)}
             hint={loading ? "Memuat data" : stats.total ? "Dari seluruh genre" : "Belum ada data"}
           />
@@ -474,6 +541,10 @@ export default function GenrePage() {
 
         {/* Daftar genre */}
         <section className="card list">
+          <div className="list-head">
+            <h2>Katalog Genre Musik</h2>
+          </div>
+
           <div className="toolbar">
             <label className="search">
               <ISearch />
@@ -485,11 +556,6 @@ export default function GenrePage() {
                 aria-label="Cari genre"
               />
             </label>
-            <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Urutkan">
-              <option value="name">Urutkan: Nama A–Z</option>
-              <option value="artists">Urutkan: Artis terbanyak</option>
-              <option value="newest">Urutkan: Terbaru</option>
-            </select>
           </div>
 
           {loading ? (
@@ -528,23 +594,61 @@ export default function GenrePage() {
                     {rows.map((g) => (
                       <tr key={g.id}>
                         <td>
-                          <div className="who">
-                            <Chip name={g.name} color={g.color} />
-                            <span className="name">{g.name}</span>
-                          </div>
+                          <button
+                            type="button"
+                            className="genre-name-btn"
+                            onClick={() => setDetailGenre(g)}
+                            title="Klik untuk melihat artis dan event terkait"
+                          >
+                            <BadgePill name={g.name} color={g.color} />
+                          </button>
                         </td>
-                        <td className="num">{nf.format(g.artists)} Artis</td>
                         <td>
-                          <span className="count" style={{ "--c": g.color } as CSSProperties}>
-                            {nf.format(g.events)} Event
-                          </span>
+                          <button
+                            type="button"
+                            className="clickable-stat"
+                            onClick={() => setDetailGenre(g)}
+                            title="Lihat daftar artis"
+                          >
+                            <strong>{nf.format(g.artists)}</strong> Artis
+                          </button>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="clickable-stat"
+                            onClick={() => setDetailGenre(g)}
+                            title="Lihat daftar event"
+                          >
+                            <span className="count-pill">
+                              {nf.format(g.events)} Event
+                            </span>
+                          </button>
                         </td>
                         <td className="right">
                           <div className="row-actions">
-                            <button className="icon-btn" onClick={() => setModal({ mode: "edit", genre: g })} aria-label={`Ubah ${g.name}`} title="Ubah">
+                            <button
+                              className="icon-btn"
+                              onClick={() => setDetailGenre(g)}
+                              aria-label={`Lihat detail ${g.name}`}
+                              title="Lihat detail artis & event"
+                            >
+                              <IEye />
+                            </button>
+                            <button
+                              className="icon-btn"
+                              onClick={() => setModal({ mode: "edit", genre: g })}
+                              aria-label={`Ubah ${g.name}`}
+                              title="Ubah"
+                            >
                               <IEdit />
                             </button>
-                            <button className="icon-btn danger" onClick={() => setToDelete(g)} aria-label={`Hapus ${g.name}`} title="Hapus">
+                            <button
+                              className="icon-btn danger"
+                              onClick={() => setToDelete(g)}
+                              aria-label={`Hapus ${g.name}`}
+                              title="Hapus"
+                            >
                               <ITrash />
                             </button>
                           </div>
@@ -589,6 +693,16 @@ export default function GenrePage() {
         </section>
       </div>
 
+      {/* Modal Detail Genre (Artis & Event terkait) */}
+      {detailGenre && (
+        <DetailGenreModal
+          genre={detailGenre}
+          onClose={() => setDetailGenre(null)}
+          onEdit={() => setModal({ mode: "edit", genre: detailGenre })}
+        />
+      )}
+
+      {/* Modal Tambah / Edit Genre */}
       {modal && (
         <GenreModal
           initial={modal.mode === "edit" ? modal.genre : null}
@@ -597,9 +711,12 @@ export default function GenrePage() {
           onSave={handleSave}
         />
       )}
+
+      {/* Dialog Konfirmasi Hapus */}
       {toDelete && (
         <ConfirmDelete genre={toDelete} busy={deleting} onCancel={() => setToDelete(null)} onConfirm={handleDelete} />
       )}
+
       {toast && <div className="toast" role="status"><ICheck /> {toast}</div>}
     </main>
   );
@@ -628,7 +745,7 @@ html, body { background: var(--bg); color: var(--ink); -webkit-font-smoothing: a
 button { font: inherit; color: inherit; }
 
 .page { min-height: 100vh; }
-.wrap { max-width: 1200px; margin: 0 auto; padding: 32px 24px 64px; display: flex; flex-direction: column; gap: 24px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 32px 24px 64px; display: flex; flex-direction: column; gap: 24px; }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
 .icon { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
@@ -640,116 +757,175 @@ button { font: inherit; color: inherit; }
 .crumb strong { color: var(--ink); font-weight: 600; }
 h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; }
 h2 { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
-h3 { font-size: 16px; font-weight: 650; }
+h3 { font-size: 15px; font-weight: 650; }
 .sub { font-size: 13.5px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
 
 /* buttons */
 .btn-primary, .btn-ghost, .btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; font-size: 13.5px; font-weight: 600; border-radius: 10px; cursor: pointer; border: 1px solid transparent; transition: background .15s, border-color .15s; white-space: nowrap; }
 .btn-primary.lg { height: 44px; padding: 0 22px; }
 .btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 1px 2px rgba(47,93,128,.3); }
-.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
 .btn-ghost { background: var(--card); border-color: var(--line); }
-.btn-ghost:hover { background: var(--hover); border-color: var(--muted); }
+.btn-ghost:hover:not(:disabled) { background: var(--hover); border-color: var(--muted); }
 .btn-danger { background: var(--danger); color: #fff; }
-.btn-danger:hover { background: var(--danger-hover); }
-button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-button:disabled { opacity: .4; cursor: not-allowed; }
+.btn-danger:hover:not(:disabled) { background: var(--danger-hover); }
+.btn-export { height: 36px; padding: 0 14px; font-size: 13px; font-weight: 600; border-radius: 8px; display: inline-flex; align-items: center; gap: 7px; }
+
+/* badge pill */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+  color: color-mix(in srgb, var(--c) 78%, var(--ink));
+  border: 1px solid color-mix(in srgb, var(--c) 25%, transparent);
+}
+.badge-pill i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.genre-name-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.genre-name-btn:hover .badge-pill {
+  filter: brightness(0.95);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.clickable-stat {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.clickable-stat:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.count-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--soft);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
 
 /* stats */
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.stat { padding: 20px; display: flex; gap: 14px; align-items: flex-start; }
-.stat-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
-.stat-label { font-size: 12.5px; font-weight: 500; color: var(--muted); }
-.stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-top: 4px; line-height: 1.2; }
+.stat { padding: 22px; display: flex; gap: 16px; align-items: flex-start; }
+.stat-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
+.stat-label { font-size: 13px; font-weight: 500; color: var(--muted); }
+.stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-top: 4px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stat-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
-/* toolbar */
+/* list */
 .list { overflow: hidden; }
-.toolbar { display: flex; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.search { flex: 1; min-width: 220px; max-width: 360px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--line); background: var(--field); border-radius: 10px; color: var(--muted); transition: border-color .15s, box-shadow .15s; }
+.list-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 18px 20px 12px; border-bottom: 1px solid var(--line); }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 20px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.search { width: 100%; max-width: 320px; display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid var(--line); background: var(--field); border-radius: 10px; color: var(--muted); transition: border-color .15s, box-shadow .15s; }
 .search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .search input { flex: 1; border: 0; outline: 0 !important; background: transparent; font: inherit; font-size: 13.5px; color: var(--ink); min-width: 0; }
-select { height: 40px; padding: 0 34px 0 12px; font: inherit; font-size: 13.5px; color: var(--ink); border: 1px solid var(--line); background-color: var(--field); border-radius: 10px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236A7380' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+.toolbar select { height: 38px; padding: 0 32px 0 12px; border: 1px solid var(--line); background: var(--field); border-radius: 10px; font: inherit; font-size: 13px; color: var(--ink); cursor: pointer; }
+.toolbar select:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 /* table */
 .table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 560px; font-size: 13.5px; }
-th { text-align: left; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 12px 20px; background: var(--soft); white-space: nowrap; }
-td { padding: 14px 20px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table { width: 100%; border-collapse: collapse; min-width: 640px; font-size: 13.5px; }
+th { text-align: left; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 13px 18px; background: var(--soft); white-space: nowrap; }
+th:first-child, td:first-child { padding-left: 20px; }
+th:last-child, td:last-child { padding-right: 20px; }
+td { padding: 14px 18px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 tbody tr { transition: background .12s; }
 tbody tr:hover { background: var(--hover); }
 tbody tr:last-child td { border-bottom: 0; }
 .right { text-align: right; }
 .num { font-variant-numeric: tabular-nums; }
-.who { display: flex; align-items: center; gap: 12px; }
-.name { font-weight: 600; font-size: 14px; }
-
-.chip { display: grid; place-items: center; border-radius: 9px; font-weight: 700; background: color-mix(in srgb, var(--c) 22%, transparent); color: color-mix(in srgb, var(--c) 60%, var(--ink)); flex-shrink: 0; }
-.badge { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 5px 14px; border-radius: 999px; background: color-mix(in srgb, var(--c) 22%, transparent); color: color-mix(in srgb, var(--c) 60%, var(--ink)); }
-.badge.lg { font-size: 14px; padding: 7px 20px; }
-.count { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px; background: color-mix(in srgb, var(--c) 14%, transparent); color: color-mix(in srgb, var(--c) 65%, var(--ink)); font-variant-numeric: tabular-nums; }
-
-.row-actions { display: inline-flex; gap: 4px; }
+.row-actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .icon-btn { width: 34px; height: 34px; display: grid; place-items: center; background: transparent; border: 0; border-radius: 8px; color: var(--muted); cursor: pointer; transition: background .15s, color .15s; }
-.icon-btn:hover { background: var(--soft); color: var(--ink); }
+.icon-btn:hover { background: var(--accent-soft); color: var(--accent); }
 .icon-btn.danger:hover { background: var(--danger-soft); color: var(--danger); }
 
+/* foot */
 .foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
 .pager { display: flex; gap: 4px; }
 .pg { min-width: 34px; height: 34px; padding: 0 8px; display: grid; place-items: center; font-size: 13px; font-weight: 600; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--muted); }
 .pg:hover:not(:disabled) { background: var(--soft); color: var(--ink); }
-.pg.active { background: var(--accent-soft); color: var(--accent); }
+.pg.active { background: var(--accent); color: var(--accent-ink); }
 
-/* empty / loading / error */
+/* empty */
 .empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 72px 24px 80px; gap: 8px; }
-.empty-icon { width: 80px; height: 80px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-bottom: 12px; box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent-soft) 45%, transparent); }
-.empty-icon.error { background: var(--danger-soft); color: var(--danger); box-shadow: 0 0 0 10px color-mix(in srgb, var(--danger-soft) 45%, transparent); }
+.empty-icon { width: 80px; height: 80px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-bottom: 12px; }
+.empty-icon.error { background: var(--danger-soft); color: var(--danger); }
 .empty p { max-width: 380px; font-size: 13.5px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
-.spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: spin .7s linear infinite; margin-bottom: 8px; }
+.spinner { width: 32px; height: 32px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* modal */
 .overlay { position: fixed; inset: 0; z-index: 50; background: var(--overlay); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 16px; animation: fade .15s ease; }
 .modal { width: 100%; max-width: 480px; max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 64px rgba(0,0,0,.28); overflow: hidden; animation: pop .18s ease; }
-.modal.small { max-width: 400px; }
-.modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 22px 24px 18px; border-bottom: 1px solid var(--line); }
-.modal-body { padding: 22px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
-.modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line); background: var(--soft); }
+.modal.small { max-width: 420px; }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 20px 24px 16px; border-bottom: 1px solid var(--line); }
+.modal-body { padding: 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line); background: var(--soft); flex-wrap: wrap; }
 .confirm { align-items: center; text-align: center; gap: 10px; padding-top: 28px; }
-.confirm .sub { margin-top: 0; }
 .warn-icon { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--danger-soft); color: var(--danger); }
-.alert { font-size: 12.5px; line-height: 1.5; padding: 10px 12px; border-radius: 10px; background: var(--danger-soft); color: var(--danger); text-align: left; }
+.alert { font-size: 12.5px; line-height: 1.5; padding: 10px 12px; border-radius: 10px; background: var(--danger-soft); color: var(--danger); text-align: left; width: 100%; }
 
+/* detail sections */
+.detail-sec { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.sec-head { margin-bottom: 10px; }
+.sec-head h3 { font-size: 13px; font-weight: 700; color: var(--ink); text-transform: uppercase; letter-spacing: 0.04em; }
+.tag-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.tag-dot { width: 7px; height: 7px; border-radius: 50%; }
+.tag-pill.event { color: var(--accent); }
+
+/* form fields */
 .field { display: flex; flex-direction: column; gap: 8px; }
 .label { font-size: 13px; font-weight: 600; }
-.hint { font-size: 12px; color: var(--muted); }
-input:not([type="search"]):not([type="color"]) { width: 100%; padding: 10px 12px; font: inherit; font-size: 13.5px; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 10px; transition: border-color .15s, box-shadow .15s; }
-input:not([type="search"]):not([type="color"]):focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-input::placeholder { color: var(--muted); opacity: .7; }
-input[aria-invalid="true"] { border-color: var(--danger); }
+input { height: 40px; padding: 0 12px; font: inherit; font-size: 13.5px; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 10px; }
+input:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .err { font-size: 12px; color: var(--danger); font-weight: 500; }
 
-.swatches { position: relative; display: flex; flex-wrap: wrap; gap: 10px; }
-.swatch { width: 34px; height: 34px; border-radius: 50%; border: 2px solid transparent; display: grid; place-items: center; color: #fff; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); transition: transform .12s, box-shadow .12s; }
-.swatch:hover { transform: scale(1.08); }
-.swatch.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
-.swatch.custom { background: var(--card); border: 1.5px dashed var(--muted); color: var(--muted); }
-.swatch.custom.on { border: 2px solid transparent; color: #fff; }
-.color-input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.swatch { width: 34px; height: 34px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; display: grid; place-items: center; color: #fff; transition: transform .12s, border-color .12s; }
+.swatch:hover { transform: scale(1.1); }
+.swatch.on { border-color: var(--ink); }
+.swatch.custom { border: 2px dashed var(--muted); background: transparent; color: var(--muted); }
+.swatch.custom.on { border-style: solid; color: #fff; }
+.color-input { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+.preview { padding: 14px; background: var(--soft); border: 1px solid var(--line); border-radius: 12px; }
+.hint { font-size: 12px; color: var(--muted); }
 
-.preview { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; border: 1.5px dashed var(--line); border-radius: 12px; background: var(--hover); }
-
-.toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 8px; background: var(--ink); color: var(--bg); font-size: 13.5px; font-weight: 500; padding: 11px 18px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); animation: fade .2s ease; }
+.toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 80; display: flex; align-items: center; gap: 8px; background: var(--ink); color: var(--bg); font-size: 13.5px; font-weight: 500; padding: 11px 18px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); animation: fade .2s ease; max-width: calc(100vw - 32px); }
 
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.98) } to { opacity: 1; transform: none } }
-@keyframes spin { to { transform: rotate(360deg) } }
 
-@media (max-width: 820px) { .stats { grid-template-columns: 1fr; } }
+@media (max-width: 860px) {
+  .stats { grid-template-columns: 1fr; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .search { max-width: none; }
+}
 @media (max-width: 560px) {
   .wrap { padding: 20px 16px 48px; }
   h1 { font-size: 24px; }
-  .head .btn-primary { width: 100%; }
-  .search { max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 `;

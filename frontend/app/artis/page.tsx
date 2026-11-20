@@ -24,6 +24,7 @@ type Artist = {
   events: number;
   bio: string;
   photo: string | null;
+  eventList: string[];
 };
 
 type Genre = { id: number; name: string; swatch: string | null };
@@ -38,6 +39,7 @@ type ApiArtist = {
   genre: string;
   genreWarna?: { bg?: string; text?: string; swatch?: string };
   jumlahEvent: number;
+  eventList?: string[];
 };
 
 // bentuk response dari backend (genreController.getGenres)
@@ -74,6 +76,7 @@ const fromApiArtist = (r: ApiArtist): Artist => ({
   events: r.jumlahEvent,
   bio: r.deskripsi ?? "",
   photo: r.foto,
+  eventList: Array.isArray(r.eventList) ? r.eventList : [],
 });
 
 const fromApiGenre = (g: ApiGenre): Genre => ({
@@ -116,6 +119,7 @@ const ICalendar = () => <Icon><rect x="3" y="5" width="18" height="16" rx="2.5" 
 const ISpark = () => <Icon><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></Icon>;
 const IEdit = () => <Icon size={16}><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4ZM13.5 6.5l4 4" /></Icon>;
 const ITrash = () => <Icon size={16}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></Icon>;
+const IEye = () => <Icon size={16}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></Icon>;
 const IClose = () => <Icon><path d="M6 6l12 12M18 6 6 18" /></Icon>;
 const ISearch = () => <Icon size={16}><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4-4" /></Icon>;
 const IPrev = () => <Icon size={14}><path d="m15 5-7 7 7 7" /></Icon>;
@@ -423,6 +427,103 @@ function ConfirmDelete({
   );
 }
 
+/* ───────────── Modal detail profil artis ───────────── */
+function DetailArtistModal({
+  artist,
+  onClose,
+  onEdit,
+}: {
+  artist: Artist;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  return (
+    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+        <header className="modal-head">
+          <div>
+            <h2 id="detail-title">Profil Lengkap Artis</h2>
+            <p className="sub">Detail informasi artis dan partisipasi event konser.</p>
+          </div>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Tutup">
+            <IClose />
+          </button>
+        </header>
+
+        <div className="modal-body">
+          <div className="artist-profile-header">
+            <Avatar name={artist.name} photo={artist.photo} size={84} />
+            <div className="artist-profile-info">
+              <h3 className="artist-profile-name">{artist.name}</h3>
+              <div style={{ marginTop: 8 }}>
+                <GenrePill genre={artist.genre} color={artist.swatch} />
+              </div>
+            </div>
+          </div>
+
+          <div className="artist-detail-sec">
+            <div className="sec-title-row">
+              <label className="label">Biografi / Deskripsi</label>
+            </div>
+            <div className="artist-bio-text">
+              {artist.bio ? artist.bio : <span className="muted">Belum ada deskripsi biografi untuk artis ini.</span>}
+            </div>
+          </div>
+
+          <div className="artist-detail-sec">
+            <div className="sec-title-row">
+              <label className="label">Event Konser Terkait</label>
+              <span className="count-badge">{artist.events} Event</span>
+            </div>
+
+            {artist.eventList && artist.eventList.length > 0 ? (
+              <div className="artist-event-tags">
+                {artist.eventList.map((ev, idx) => (
+                  <span key={idx} className="artist-event-tag">
+                    <ICalendar /> {ev}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="hint">Belum ada event konser yang melibatkan artis ini.</p>
+            )}
+          </div>
+        </div>
+
+        <footer className="modal-foot">
+          <button type="button" className="btn-ghost" onClick={onClose}>
+            Tutup
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              onClose();
+              onEdit();
+            }}
+          >
+            <IEdit /> Ubah Profil
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 /* ───────────── Halaman ───────────── */
 export default function ArtistPage() {
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -434,6 +535,7 @@ export default function ArtistPage() {
   const [genreFilter, setGenreFilter] = useState("Semua"); // "Semua" atau id genre (string)
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<{ mode: "create" } | { mode: "edit"; artist: Artist } | null>(null);
+  const [detailArtist, setDetailArtist] = useState<Artist | null>(null);
   const [toDelete, setToDelete] = useState<Artist | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -508,7 +610,7 @@ export default function ArtistPage() {
     return artists.filter(
       (a) =>
         (genreFilter === "Semua" || String(a.genreId) === genreFilter) &&
-        (!q || a.name.toLowerCase().includes(q)),
+        (!q || [a.name, a.genre, a.bio].some((v) => v.toLowerCase().includes(q))),
     );
   }, [artists, query, genreFilter]);
 
@@ -632,7 +734,7 @@ export default function ArtistPage() {
               onChange={(e) => (setGenreFilter(e.target.value), setPage(1))}
               aria-label="Filter genre"
             >
-              <option value="Semua">Semua</option>
+              <option value="Semua">Semua Genre</option>
               {genres.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </div>
@@ -665,18 +767,40 @@ export default function ArtistPage() {
                     {rows.map((a) => (
                       <tr key={a.id}>
                         <td>
-                          <div className="who">
+                          <button
+                            type="button"
+                            className="who artist-name-btn"
+                            onClick={() => setDetailArtist(a)}
+                            title="Klik untuk melihat profil"
+                          >
                             <Avatar name={a.name} photo={a.photo} />
                             <div>
                               <p className="name">{a.name}</p>
                               {a.bio && <p className="bio">{a.bio}</p>}
                             </div>
-                          </div>
+                          </button>
                         </td>
                         <td><GenrePill genre={a.genre} color={a.swatch} /></td>
-                        <td className="num">{nf.format(a.events)} event</td>
+                        <td className="num">
+                          <button
+                            type="button"
+                            className="event-count-btn"
+                            onClick={() => setDetailArtist(a)}
+                            title="Lihat event artis ini"
+                          >
+                            {nf.format(a.events)} event
+                          </button>
+                        </td>
                         <td className="right">
                           <div className="row-actions">
+                            <button
+                              className="icon-btn"
+                              onClick={() => setDetailArtist(a)}
+                              aria-label={`Lihat profil ${a.name}`}
+                              title="Lihat profil"
+                            >
+                              <IEye />
+                            </button>
                             <button className="icon-btn" onClick={() => setModal({ mode: "edit", artist: a })} aria-label={`Ubah ${a.name}`} title="Ubah">
                               <IEdit />
                             </button>
@@ -733,6 +857,13 @@ export default function ArtistPage() {
           genres={genres}
           onClose={() => setModal(null)}
           onSave={handleSave}
+        />
+      )}
+      {detailArtist && (
+        <DetailArtistModal
+          artist={detailArtist}
+          onClose={() => setDetailArtist(null)}
+          onEdit={() => setModal({ mode: "edit", artist: detailArtist })}
         />
       )}
       {toDelete && <ConfirmDelete artist={toDelete} onCancel={() => setToDelete(null)} onConfirm={handleDelete} />}
@@ -827,6 +958,11 @@ tbody tr:last-child td { border-bottom: 0; }
 .avatar { border-radius: 50%; object-fit: cover; flex-shrink: 0; display: block; }
 .avatar.ph { display: grid; place-items: center; color: #fff; font-weight: 600; }
 
+.artist-name-btn { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: inherit; width: 100%; }
+.artist-name-btn:hover .name { color: var(--accent); text-decoration: underline; }
+.event-count-btn { background: none; border: 0; padding: 2px 6px; border-radius: 6px; cursor: pointer; color: inherit; font-size: inherit; font-variant-numeric: tabular-nums; transition: background .12s; }
+.event-count-btn:hover { background: var(--soft); color: var(--accent); text-decoration: underline; }
+
 .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; background: color-mix(in srgb, var(--c) 13%, transparent); color: color-mix(in srgb, var(--c) 78%, var(--ink)); }
 .pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
 
@@ -858,6 +994,17 @@ tbody tr:last-child td { border-bottom: 0; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line); background: var(--soft); }
 .confirm { align-items: center; text-align: center; gap: 10px; padding-top: 28px; }
 .warn-icon { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--danger-soft); color: var(--danger); }
+
+/* detail modal elements */
+.artist-profile-header { display: flex; align-items: center; gap: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.artist-profile-info { display: flex; flex-direction: column; min-width: 0; }
+.artist-profile-name { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.artist-detail-sec { display: flex; flex-direction: column; gap: 8px; }
+.artist-bio-text { font-size: 13.5px; line-height: 1.6; color: var(--ink); white-space: pre-wrap; background: var(--soft); padding: 12px 14px; border-radius: 10px; }
+.sec-title-row { display: flex; justify-content: space-between; align-items: center; }
+.count-badge { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.artist-event-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.artist-event-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--hover); border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; font-weight: 500; color: var(--ink); }
 
 .field { display: flex; flex-direction: column; gap: 7px; }
 .label { font-size: 13px; font-weight: 600; }

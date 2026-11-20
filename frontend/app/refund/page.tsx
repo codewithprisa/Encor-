@@ -44,9 +44,14 @@ type Refund = {
   invoice: string;
   pemesan: string;
   email: string;
+  telepon?: string;
   event: string;
   alasan: string;
   jumlah: number;
+  metodePembayaran?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
   status: Status;
   statusKode: "pending" | "approved" | "rejected" | "completed";
   catatanAdmin: string;
@@ -119,6 +124,11 @@ const IFile = () => <Icon><path d="M6 3h8l4 4v14H6V3ZM14 3v4h4M9 12h6M9 16h6" />
 const IClock = () => <Icon><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>;
 const IWallet = () => <Icon><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Zm0 0V6a2 2 0 0 1 2-2h11M16 14h2" /></Icon>;
 const IDone = () => <Icon><circle cx="12" cy="12" r="9" /><path d="m8 12.5 3 3 5-6" /></Icon>;
+const IDownload = () => (
+  <Icon size={16}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+  </Icon>
+);
 const IInbox = () => (
   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M3 13l3-8h12l3 8v6H3v-6ZM3 13h5l1 3h6l1-3h5" />
@@ -298,6 +308,9 @@ function DetailModal({
             <Row label="Pengguna">
               <strong>{refund.pemesan}</strong>
               <span className="muted small">{refund.email}</span>
+              {refund.telepon && refund.telepon !== "-" && (
+                <span className="muted small">{refund.telepon}</span>
+              )}
             </Row>
             <Row label="Event">{refund.event}</Row>
             <Row label="Alasan refund">{refund.alasan}</Row>
@@ -305,6 +318,20 @@ function DetailModal({
             <Row label="Tgl ajuan">{refund.diajukan}</Row>
             <Row label="Tgl diproses">{refund.diproses ?? "—"}</Row>
           </dl>
+
+          {/* Rekening Tujuan Pengembalian */}
+          <div className="bank-card">
+            <div className="bank-header">
+              <span className="bank-title">Rekening Tujuan Pengembalian</span>
+              <span className="bank-badge">{refund.metodePembayaran && refund.metodePembayaran !== "-" ? refund.metodePembayaran : "Transfer"}</span>
+            </div>
+            <div className="bank-details">
+              <p className="bank-name">{refund.bankName || "E-Wallet / Bank"}</p>
+              <p className="bank-acc">{refund.accountNumber || "—"}</p>
+              <p className="bank-owner">a.n. {refund.accountName || refund.pemesan}</p>
+            </div>
+          </div>
+
           {refund.statusKode === "rejected" && refund.catatanAdmin && (
             <p className="alert">Alasan penolakan: {refund.catatanAdmin}</p>
           )}
@@ -464,6 +491,56 @@ export default function RefundPage() {
     }
   }
 
+  /* Ekspor laporan ke CSV / Excel */
+  function exportReport() {
+    if (!filtered.length) return showToast("Tidak ada data untuk diekspor.", true);
+    const headers = [
+      "No",
+      "Invoice",
+      "Pemesan",
+      "Email",
+      "Telepon",
+      "Event",
+      "Alasan",
+      "Nominal (IDR)",
+      "Status",
+      "Metode / Bank",
+      "No Rekening",
+      "Nama Rekening",
+      "Tgl Ajuan",
+      "Tgl Diproses",
+    ];
+    const csvRows = filtered.map((r, i) => [
+      i + 1,
+      `"${r.invoice}"`,
+      `"${r.pemesan.replace(/"/g, '""')}"`,
+      `"${r.email}"`,
+      `"${r.telepon || "-"}"`,
+      `"${(r.event || "").replace(/"/g, '""')}"`,
+      `"${(r.alasan || "").replace(/"/g, '""')}"`,
+      r.jumlah,
+      `"${r.status}"`,
+      `"${r.bankName || r.metodePembayaran || "-"}"`,
+      `"${r.accountNumber || "-"}"`,
+      `"${(r.accountName || r.pemesan).replace(/"/g, '""')}"`,
+      `"${r.diajukan}"`,
+      `"${r.diproses || "-"}"`,
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...csvRows.map((row) => row.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateStr = new Date().toISOString().split("T")[0];
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Laporan_Refund_Encore_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast("Laporan refund berhasil diunduh.");
+  }
+
   const viewing = refunds.find((r) => r.id === viewId) ?? null;
   const tabs: Tab[] = ["Semua", ...STATUSES];
 
@@ -494,12 +571,17 @@ export default function RefundPage() {
         {/* Daftar pengajuan */}
         <section className="card list" aria-busy={loading}>
           <div className="list-head">
-            <h2>Daftar Pengajuan Refund</h2>
-            <span className="muted small">
-              {filtered.length > 0
-                ? `Menampilkan ${start + 1}–${start + rows.length} dari ${nf.format(filtered.length)} ajuan`
-                : "Tidak ada ajuan"}
-            </span>
+            <div>
+              <h2>Daftar Pengajuan Refund</h2>
+              <span className="muted small">
+                {filtered.length > 0
+                  ? `Menampilkan ${start + 1}–${start + rows.length} dari ${nf.format(filtered.length)} ajuan`
+                  : "Tidak ada ajuan"}
+              </span>
+            </div>
+            <button className="btn-ghost btn-export" onClick={exportReport} title="Ekspor daftar ke format Excel / CSV">
+              <IDownload /> Ekspor Laporan
+            </button>
           </div>
 
           <div className="toolbar">
@@ -903,6 +985,59 @@ textarea[aria-invalid="true"] { border-color: var(--danger); }
 
 .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 80; display: flex; align-items: center; gap: 8px; background: var(--ink); color: var(--bg); font-size: 13.5px; font-weight: 500; padding: 11px 18px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); animation: fade .2s ease; max-width: calc(100vw - 32px); }
 .toast.err { background: var(--danger); color: #fff; }
+
+.btn-export { height: 36px; padding: 0 14px; font-size: 13px; font-weight: 600; border-radius: 8px; display: inline-flex; align-items: center; gap: 7px; }
+
+.bank-card {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bank-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.bank-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+}
+.bank-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.bank-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bank-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.bank-acc {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.bank-owner {
+  font-size: 12.5px;
+  color: var(--muted);
+}
 
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.98) } to { opacity: 1; transform: none } }
