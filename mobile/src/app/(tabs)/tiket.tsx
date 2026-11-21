@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
+import { getStorageItem, setStorageItem } from "@/lib/tokenStorage";
 import * as Sharing from "expo-sharing";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import {
@@ -441,7 +441,7 @@ const TRANSFER_KEY = "encore_transferred";
 
 async function readTransferred(): Promise<Record<string, string>> {
   try {
-    const raw = await SecureStore.getItemAsync(TRANSFER_KEY);
+    const raw = await getStorageItem(TRANSFER_KEY);
     const obj = raw ? JSON.parse(raw) : {};
     return obj && typeof obj === "object" ? obj : {};
   } catch {
@@ -453,7 +453,7 @@ async function saveTransferred(ticketId: string, name: string) {
   try {
     const cur = await readTransferred();
     cur[ticketId] = name;
-    await SecureStore.setItemAsync(TRANSFER_KEY, JSON.stringify(cur));
+    await setStorageItem(TRANSFER_KEY, JSON.stringify(cur));
   } catch {
     // gagal menyimpan: tiket tetap pindah ke Riwayat selama aplikasi terbuka
   }
@@ -473,7 +473,7 @@ const MY_REFUND_PATH = "/refund/saya";
 
 /** fetch ke backend dengan token login; melempar Error berisi pesan server jika gagal. */
 async function authFetch(path: string, init: RequestInit = {}): Promise<any> {
-  const token = await SecureStore.getItemAsync(TOKEN_KEY);
+  const token = await getStorageItem(TOKEN_KEY);
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
     headers: {
@@ -547,7 +547,7 @@ export default function TiketScreen() {
   /** Ambil tiket milik user yang login dari backend. `silent` = tanpa pesan error (untuk auto-refresh). */
   const loadTickets = useCallback(async (silent = false) => {
     try {
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      const token = await getStorageItem(TOKEN_KEY);
       const res = await fetch(`${BASE_URL}/checkout/tiket`, {
         headers: {
           Accept: "application/json",

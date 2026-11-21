@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
-import * as SecureStore from "expo-secure-store";
+import { getStorageItem, TOKEN_KEY } from "./tokenStorage";
+export { TOKEN_KEY };
 
 const API_PORT = 3001;
 const IPV4_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
@@ -50,10 +51,9 @@ export const imageUrl = (p?: string | null) =>
 
 const TIMEOUT_MS = 10000;
 const UPLOAD_TIMEOUT_MS = 30000; // upload gambar butuh waktu lebih lama
-export const TOKEN_KEY = "encore_token";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = await SecureStore.getItemAsync(TOKEN_KEY);
+  const token = await getStorageItem(TOKEN_KEY);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -95,7 +95,7 @@ async function upload<T>(
   file: { uri: string; name?: string; mimeType?: string },
   extraFields: Record<string, string> = {}
 ): Promise<T> {
-  const token = await SecureStore.getItemAsync(TOKEN_KEY);
+  const token = await getStorageItem(TOKEN_KEY);
 
   const form = new FormData();
   form.append(fieldName, {
@@ -135,7 +135,7 @@ async function upload<T>(
  * Pakai XMLHttpRequest karena lebih stabil daripada fetch untuk upload FormData di Android.
  */
 async function uploadProfilePhoto(uri: string): Promise<{ photo: string }> {
-  const token = await SecureStore.getItemAsync(TOKEN_KEY);
+  const token = await getStorageItem(TOKEN_KEY);
   const fileName = uri.split("/").pop() ?? "foto.jpg";
   const ext = /\.(\w+)$/.exec(fileName)?.[1]?.toLowerCase() ?? "jpg";
   const type = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";

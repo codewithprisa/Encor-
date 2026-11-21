@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as SecureStore from "expo-secure-store";
+import { setStorageItem } from "../../lib/tokenStorage";
 
 // Alamat server diatur di satu tempat: lib/api.ts
 import { API_URL, BASE_URL, TOKEN_KEY } from "../../lib/api";
@@ -130,12 +130,12 @@ export default function Login() {
         return;
       }
 
-      // Simpan token JWT dengan aman (key sama dengan lib/api.ts dan profile.tsx)
-      await SecureStore.setItemAsync(TOKEN_KEY, token);
+      // Simpan token JWT dengan aman (mendukung Native & Web)
+      await setStorageItem(TOKEN_KEY, token);
 
       // Simpan informasi pengguna (hanya kalau server mengirimnya)
       if (user) {
-        await SecureStore.setItemAsync("encore_user", JSON.stringify(user));
+        await setStorageItem("encore_user", JSON.stringify(user));
       }
 
       // Bersihkan password
@@ -147,9 +147,9 @@ export default function Login() {
       console.error("Login error:", error);
 
       setErrors({
-        form: timedOut
-          ? `Server tidak merespons (${API_URL}). Cek WiFi, IP laptop, dan firewall.`
-          : `Tidak dapat terhubung ke server (${API_URL}). Pastikan backend menyala dan HP satu WiFi dengan laptop.`,
+        form: error?.message || (timedOut
+          ? `Server tidak merespons (${API_URL}). Cek koneksi backend.`
+          : `Tidak dapat login.`),
       });
     } finally {
       clearTimeout(timer);

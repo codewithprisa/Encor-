@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
+import { getStorageItem } from "@/lib/tokenStorage";
 import * as Sharing from "expo-sharing";
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactElement } from "react";
 import {
@@ -2152,7 +2152,7 @@ function TicketPhotoModal({
 
     (async () => {
       try {
-        const token = await SecureStore.getItemAsync(TOKEN_KEY);
+        const token = await getStorageItem(TOKEN_KEY);
         const res = await fetch(`${BASE_URL}/checkout/tiket`, {
           headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         });

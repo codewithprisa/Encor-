@@ -16,7 +16,7 @@ import QRCode from "react-native-qrcode-svg";
 import { captureRef } from "react-native-view-shot";
 import * as Clipboard from "expo-clipboard";
 import * as DocumentPicker from "expo-document-picker";
-import * as SecureStore from "expo-secure-store";
+import { getStorageItem } from "@/lib/tokenStorage";
 
 import { BASE_URL, TOKEN_KEY } from "@/lib/api";
 
@@ -284,7 +284,7 @@ export default function PaymentScreen() {
 
     setUploading(true);
     try {
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      const token = await getStorageItem(TOKEN_KEY);
       const form = new FormData();
       // di React Native, file dikirim sebagai objek { uri, name, type }
       form.append("bukti", { uri: file.uri, name: file.name, type: file.mime } as any);
@@ -346,7 +346,7 @@ export default function PaymentScreen() {
       if (!shot) throw new Error("Gagal membuat gambar konfirmasi.");
       const uri = shot.startsWith("file://") ? shot : `file://${shot}`;
 
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      const token = await getStorageItem(TOKEN_KEY);
       const form = new FormData();
       form.append("struk", { uri, name: "konfirmasi.png", type: "image/png" } as any);
 

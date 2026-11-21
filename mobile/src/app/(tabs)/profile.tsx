@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
+import { removeStorageItem } from "@/lib/tokenStorage";
 import * as ImagePicker from "expo-image-picker";
 import { useFonts, PlayfairDisplay_700Bold } from "@expo-google-fonts/playfair-display";
 import { DMSans_400Regular, DMSans_500Medium } from "@expo-google-fonts/dm-sans";
@@ -256,8 +256,8 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await SecureStore.deleteItemAsync(TOKEN_KEY);
-            await SecureStore.deleteItemAsync("encore_user");
+            await removeStorageItem(TOKEN_KEY);
+            await removeStorageItem("encore_user");
           } finally {
             hasLoaded.current = false;
             editingRef.current = false;
