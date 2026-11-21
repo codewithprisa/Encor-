@@ -1261,23 +1261,32 @@ function NotificationPopup({
                 isTransfer && !pending ? TRANSFER_RESULT[(it.transferStatus as Exclude<TransferStatus, "pending">) ?? "cancelled"] : null;
 
               return (
-                <Pressable
-                  key={it.id}
-                  style={({ pressed }) => [n.row, !it.read && n.rowUnread, pressed && n.pressed]}
-                  onPress={() => {
-                    // Notifikasi transfer yang belum dijawab tidak ditandai dibaca sebelum dijawab.
-                    if (!it.read && !pending) onRead(it.id);
-                    if (it.eventId) onOpenEvent(it.eventId);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${it.title}. ${it.body}. ${it.time}${it.read ? "" : ", belum dibaca"}`}
-                >
-                  <View style={n.icon}>
+                <View key={it.id} style={[n.row, !it.read && n.rowUnread]}>
+                  <Pressable
+                    style={({ pressed }) => [n.icon, pressed && n.pressed]}
+                    onPress={() => {
+                      if (!it.read && !pending) onRead(it.id);
+                      if (it.eventId) onOpenEvent(it.eventId);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Buka detail notifikasi"
+                  >
                     <Ionicons name={it.icon} size={20} color={COLORS.brand} />
-                  </View>
+                  </Pressable>
                   <View style={n.rowBody}>
-                    <Text style={n.rowTitle}>{it.title}</Text>
-                    <Text style={n.rowText}>{it.body}</Text>
+                    <Pressable
+                      style={({ pressed }) => [n.rowHeader, pressed && n.pressed]}
+                      onPress={() => {
+                        // Notifikasi transfer yang belum dijawab tidak ditandai dibaca sebelum dijawab.
+                        if (!it.read && !pending) onRead(it.id);
+                        if (it.eventId) onOpenEvent(it.eventId);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${it.title}. ${it.body}. ${it.time}${it.read ? "" : ", belum dibaca"}`}
+                    >
+                      <Text style={n.rowTitle}>{it.title}</Text>
+                      <Text style={n.rowText}>{it.body}</Text>
+                    </Pressable>
 
                     {/* Pilihan Terima / Tolak untuk transfer tiket yang masih menunggu */}
                     {pending && (
@@ -1360,7 +1369,7 @@ function NotificationPopup({
                     </View>
                   </View>
                   {!it.read && <View style={n.dot} />}
-                </Pressable>
+                </View>
               );
             })}
 
@@ -1423,6 +1432,7 @@ const n = StyleSheet.create({
     justifyContent: "center",
   },
   rowBody: { flex: 1, gap: 2 },
+  rowHeader: { gap: 2 },
   rowTitle: { fontSize: 14, fontWeight: "700", color: COLORS.ink },
   rowText: { fontSize: 12.5, lineHeight: 18, color: COLORS.muted },
   rowFoot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
