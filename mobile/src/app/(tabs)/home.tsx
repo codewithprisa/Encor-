@@ -936,15 +936,9 @@ export default function Home() {
                             {lowestPrice(e) > 0 ? formatRupiah(lowestPrice(e)) : "-"}
                           </Text>
                         </View>
-                        <Pressable
-                          style={({ pressed }) => [styles.buy, pressed && styles.pressed]}
-                          onPress={() => openEvent(e)}
-                          hitSlop={6}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Beli tiket ${e.title}`}
-                        >
+                        <View style={styles.buy}>
                           <Text style={styles.buyText}>Beli</Text>
-                        </Pressable>
+                        </View>
                       </View>
                     </View>
 
@@ -1240,9 +1234,9 @@ function NotificationPopup({
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-      <Pressable style={n.backdrop} onPress={onClose} accessibilityLabel="Tutup notifikasi">
-        {/* onPress kosong agar ketukan di dalam kartu tidak menutup pop up */}
-        <Pressable style={[n.card, { marginTop: insets.top + 54 }]} onPress={() => {}}>
+      <View style={n.backdrop}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Tutup notifikasi" />
+        <View style={[n.card, { marginTop: insets.top + 54 }]}>
           <View style={n.caret} />
 
           <View style={n.head}>
@@ -1377,8 +1371,8 @@ function NotificationPopup({
               </View>
             )}
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
